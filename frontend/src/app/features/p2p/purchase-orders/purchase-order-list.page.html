@@ -1,0 +1,97 @@
+<div class="page">
+  <app-page-header title="Purchase Orders" subtitle="Commit spend to a supplier. A purchase request is optional; a vendor is required.">
+    @if (canEdit()) {
+      <button class="btn btn--primary" type="button" (click)="openCreate()">New purchase order</button>
+    }
+  </app-page-header>
+  <app-p2p-banner currentStep="Purchase Order" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search PO, vendor, request..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="vendorId" (change)="page = 1; load()">
+      <option value="">All vendors</option>
+      @for (vendor of vendors; track vendor.id) {
+        <option [value]="vendor.id">{{ vendor.name }}</option>
+      }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="draft">Draft</option>
+      <option value="issued">Issued</option>
+      <option value="received">Received</option>
+      <option value="closed">Closed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No purchase orders" message="Convert an approved request or create a PO directly." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>PO</th><th>Vendor</th><th>Request</th><th>Date</th><th class="col-amount">Amount</th><th>Status</th><th class="col-actions">Actions</th></tr>
+        </thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/p2p/purchase-orders', row.id]">{{ row.poNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/vendors', row.vendorId]">{{ row.vendorName }}</a></td>
+              <td>
+                @if (row.purchaseRequestId) {
+                  <a class="table-link" [routerLink]="['/p2p/purchase-requests', row.purchaseRequestId]">{{ row.purchaseRequestNumber }}</a>
+                } @else { — }
+              </td>
+              <td>{{ row.orderDate }}</td>
+              <td class="col-amount">{{ row.totalAmount | inr }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/p2p/purchase-orders', row.id]">View</a>
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit purchase order' : 'New purchase order'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field"><label class="form-field__label">PO number<span class="form-field__required">*</span></label><input class="form-input" formControlName="poNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Vendor<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="vendorId">
+          <option value="">Select vendor</option>
+          @for (vendor of vendors; track vendor.id) { <option [value]="vendor.id">{{ vendor.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Purchase request</label>
+        <select class="form-select" formControlName="purchaseRequestId">
+          <option value="">None — create PO directly</option>
+          @for (request of approvedRequests; track request.id) {
+            <option [value]="request.id">{{ request.requestNumber }} — {{ request.vendorName || 'No vendor' }}</option>
+          }
+        </select>
+        <span class="form-field__hint">Only approved requests appear here. Leave blank to create a PO directly.</span>
+      </div>
+      <div class="form-field"><label class="form-field__label">Order date</label><input class="form-input" type="date" formControlName="orderDate" /></div>
+      <div class="form-field"><label class="form-field__label">Total amount</label><input class="form-input" formControlName="totalAmount" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="draft">Draft</option>
+          <option value="issued">Issued</option>
+          <option value="received">Received</option>
+          <option value="closed">Closed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

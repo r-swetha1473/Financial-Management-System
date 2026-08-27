@@ -1,0 +1,52 @@
+<div class="page">
+  <app-page-header title="Customers" subtitle="Customer master data for this organization. Used by O2C, bookings, and invoices.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Add customer</button> }
+  </app-page-header>
+  <app-o2c-banner currentStep="Customer" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search name or address..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No customers" message="Add a customer to start order-to-cash." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Customer</th><th>GSTIN</th><th>State</th><th>Credit limit</th><th>Created</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>
+                <a class="table-link" [routerLink]="['/master/customers', row.id]">{{ row.name }}</a>
+                <div class="text-muted">{{ row.address }}</div>
+              </td>
+              <td class="text-mono">{{ row.gstin || '—' }}</td>
+              <td>{{ row.state || '—' }}</td>
+              <td>{{ row.creditLimit || '—' }}</td>
+              <td>{{ row.createdAt }}</td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/master/customers', row.id]">View</a>
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit customer' : 'Add customer'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field form-field--full"><label class="form-field__label">Customer name<span class="form-field__required">*</span></label><input class="form-input" formControlName="name" placeholder="Legal customer name" /></div>
+      <div class="form-field form-field--full"><label class="form-field__label">Address</label><textarea class="form-textarea" rows="2" formControlName="address"></textarea></div>
+      <div class="form-field"><label class="form-field__label">GSTIN</label><input class="form-input" formControlName="gstin" placeholder="GSTIN" /></div>
+      <div class="form-field"><label class="form-field__label">State</label><input class="form-input" formControlName="state" /></div>
+      <div class="form-field"><label class="form-field__label">Credit limit</label><input class="form-input" formControlName="creditLimit" placeholder="Optional" /></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

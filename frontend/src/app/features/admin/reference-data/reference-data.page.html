@@ -1,0 +1,79 @@
+<div class="page">
+  <app-page-header title="Reference Data" subtitle="Organization lookup values (data type, code, label). Receipt payment modes remain Cash, Card, and UPI.">
+    @if (canEdit()) {
+      <button class="btn btn--primary" type="button" (click)="openCreate()">Add lookup</button>
+    }
+  </app-page-header>
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search type, code, or label..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <input class="form-input" placeholder="Filter type" [(ngModel)]="dataType" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No lookups" message="Add a data type and code for this organization." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Code</th>
+            <th>Label</th>
+            <th>Status</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono">{{ row.dataType }}</td>
+              <td class="text-mono">{{ row.code }}</td>
+              <td>{{ row.label }}</td>
+              <td><app-status-badge [status]="row.isActive ? 'active' : 'inactive'" /></td>
+              <td class="col-actions">
+                @if (canEdit()) {
+                  <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit lookup' : 'Add lookup'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field">
+        <label class="form-field__label">Data type<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="dataType" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Code<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="code" />
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Label<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="label" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="isActive">
+          <option [ngValue]="true">Active</option>
+          <option [ngValue]="false">Inactive</option>
+        </select>
+      </div>
+    </form>
+    <p class="form-field__hint">Lookups do not change GST splits or receipt payment modes.</p>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

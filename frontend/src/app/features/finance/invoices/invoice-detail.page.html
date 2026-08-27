@@ -1,0 +1,46 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Invoice not found" message="This invoice is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.invoiceNumber" subtitle="Existing sales invoice. Pending is invoice amount less receipts.">
+      <a class="btn btn--secondary" routerLink="/finance/invoices">All invoices</a>
+      @if (canEdit() && record.status !== 'paid') {
+        <a class="btn btn--primary" routerLink="/finance/receipts" [queryParams]="{ create: '1', invoiceId: record.id }">Record receipt</a>
+      }
+    </app-page-header>
+    <app-existing-sales-banner currentStep="Invoice" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName || '—', route: record.customerId ? '/master/customers/' + record.customerId : null },
+      { label: 'Booking', value: record.bookingLabel || '—', route: record.bookingId ? '/finance/bookings/' + record.bookingId : null },
+      { label: 'Invoice', value: record.invoiceNumber, status: record.status },
+      { label: 'Receipt', value: receipts[0] ? receipts[0].receiptDate : 'None', route: receipts[0] ? '/finance/receipts/' + receipts[0].id : null }
+    ]" />
+    <div class="detail-grid">
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Summary</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <dt>Invoice amount</dt><dd>{{ record.invoiceAmount | inr }}</dd>
+            <dt>Pending</dt><dd>{{ outstanding | inr }}</dd>
+            <dt>GST invoice</dt><dd>{{ record.isGstInvoice ? 'Yes' : 'No' }}</dd>
+            <dt>GST amount</dt><dd>{{ record.gstAmount | inr }}</dd>
+            <dt>Security deposited</dt><dd>{{ record.securityAmountDeposited | inr }}</dd>
+            <dt>Plan</dt><dd>{{ record.planName || '—' }}</dd>
+            <dt>Raised</dt><dd>{{ record.invoiceRaisedDate }}</dd>
+            <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+          </dl>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Receipts</h3></div>
+        <div class="card__body">
+          @for (row of receipts; track row.id) {
+            <p><a class="table-link" [routerLink]="['/finance/receipts', row.id]">{{ row.receiptDate }}</a> — {{ row.receiptAmount | inr }} ({{ row.paymentMode }})</p>
+          } @empty {
+            <p class="text-secondary">No receipts recorded.</p>
+          }
+        </div>
+      </article>
+    </div>
+  }
+</div>

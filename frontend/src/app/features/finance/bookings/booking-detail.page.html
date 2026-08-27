@@ -1,0 +1,26 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Booking not found" message="This booking is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.offeringName || 'Booking'" subtitle="Existing booking record. Dates and security paid only — no invented booking status.">
+      <a class="btn btn--secondary" routerLink="/finance/bookings">All bookings</a>
+      @if (canEdit()) {
+        <a class="btn btn--primary" routerLink="/finance/invoices" [queryParams]="{ create: '1', bookingId: record.id, customerId: record.customerId }">Create invoice</a>
+      }
+    </app-page-header>
+    <app-existing-sales-banner currentStep="Booking" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName || '—', route: record.customerId ? '/master/customers/' + record.customerId : null },
+      { label: 'Booking', value: record.offeringName || record.id },
+      { label: 'Invoice', value: invoices[0]?.invoiceNumber || 'None', route: invoices[0] ? '/finance/invoices/' + invoices[0].id : null }
+    ]" />
+    <article class="card"><div class="card__body">
+      <dl class="detail-list">
+        <dt>Offering</dt><dd>{{ record.offeringName || '—' }}</dd>
+        <dt>Start</dt><dd>{{ record.bookingStartDate }}</dd>
+        <dt>End</dt><dd>{{ record.bookingEndDate }}</dd>
+        <dt>Security paid</dt><dd>{{ record.securityPaid | inr }}</dd>
+      </dl>
+    </div></article>
+  }
+</div>

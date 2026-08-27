@@ -1,0 +1,80 @@
+<div class="page">
+  <app-page-header title="Supplier Payments" subtitle="Apply payments to a supplier invoice. Amount cannot exceed outstanding.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Record payment</button> }
+  </app-page-header>
+  <app-p2p-banner currentStep="Payment" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice, vendor, mode..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No payments" message="Record a payment against an approved supplier invoice." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Invoice</th><th>Vendor</th><th class="col-amount">Amount</th><th>Mode</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.paymentDate }}</td>
+              <td><a class="table-link" [routerLink]="['/p2p/supplier-invoices', row.supplierInvoiceId]">{{ row.invoiceNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/vendors', row.vendorId]">{{ row.vendorName }}</a></td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td>{{ row.paymentMode }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions"><a class="btn btn--ghost btn--sm" [routerLink]="['/p2p/payments', row.id]">View</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" title="Record payment" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Supplier invoice<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="supplierInvoiceId">
+          <option value="">Select invoice</option>
+          @for (invoice of payableInvoices; track invoice.id) {
+            <option [value]="invoice.id">{{ invoice.invoiceNumber }} — {{ invoice.vendorName }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Payment date</label><input class="form-input" type="date" formControlName="paymentDate" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Mode</label>
+        <select class="form-select" formControlName="paymentMode">
+          <option value="Cash">Cash</option>
+          <option value="Card">Card</option>
+          <option value="UPI">UPI</option>
+        </select>
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Amount<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="amount" [class.is-error]="!!amountError" />
+        @if (amountError) { <span class="form-field__error">{{ amountError }}</span> }
+      </div>
+    </form>
+    <div class="payment-summary">
+      <div class="payment-summary__row"><span>Invoice amount</span><strong>{{ invoiceAmount | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Already paid</span><strong>{{ alreadyPaid | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Outstanding</span><strong>{{ outstanding | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Remaining after this payment</span><strong>{{ remainingAfter | inr }}</strong></div>
+    </div>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="!!amountError" (click)="requestSave()">Continue</button>
+    </div>
+  </app-modal>
+  <app-confirm-dialog
+    [open]="confirmOpen()"
+    title="Confirm payment"
+    message="Record this supplier payment? Outstanding is invoice amount less live payments already recorded."
+    confirmLabel="Record payment"
+    [busy]="saving()"
+    (confirmed)="confirmSave()"
+    (cancelled)="confirmOpen.set(false)"
+  />
+</div>

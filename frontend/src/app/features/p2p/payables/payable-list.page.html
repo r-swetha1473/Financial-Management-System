@@ -1,0 +1,42 @@
+<div class="page">
+  <app-page-header title="Payables" subtitle="Outstanding supplier balances created with each supplier invoice. Not a free-form ledger." />
+  <app-p2p-banner currentStep="Payables" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice or vendor..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="vendorId" (change)="page = 1; load()">
+      <option value="">All vendors</option>
+      @for (vendor of vendors; track vendor.id) { <option [value]="vendor.id">{{ vendor.name }}</option> }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="open">Open</option>
+      <option value="partial">Partial</option>
+      <option value="closed">Closed</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No payables" message="Payables appear when a supplier invoice is recorded." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Invoice</th><th>Vendor</th><th class="col-amount">Amount</th><th class="col-amount">Outstanding</th><th>Due</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td><a class="table-link" [routerLink]="['/p2p/supplier-invoices', row.sourceId]">{{ row.invoiceNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/vendors', row.vendorId]">{{ row.vendorName }}</a></td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td class="col-amount">{{ row.outstanding | inr }}</td>
+              <td>{{ row.dueDate }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions"><a class="btn btn--ghost btn--sm" [routerLink]="['/p2p/payables', row.id]">View</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+</div>

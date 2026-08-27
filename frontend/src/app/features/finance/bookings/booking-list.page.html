@@ -1,0 +1,68 @@
+<div class="page">
+  <app-page-header title="Bookings" subtitle="Existing booking records: offering, customer, dates, and security paid. No booking status is recorded.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New booking</button> }
+  </app-page-header>
+  <app-existing-sales-banner currentStep="Booking" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search offering or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
+      <option value="">All customers</option>
+      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No bookings" message="Create a booking for a customer offering." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Offering</th><th>Customer</th><th>Start</th><th>End</th><th class="col-amount">Security paid</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td><a class="table-link" [routerLink]="['/finance/bookings', row.id]">{{ row.offeringName || '—' }}</a></td>
+              <td>
+                @if (row.customerId) { <a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a> }
+                @else { — }
+              </td>
+              <td>{{ row.bookingStartDate }}</td>
+              <td>{{ row.bookingEndDate }}</td>
+              <td class="col-amount">{{ row.securityPaid | inr }}</td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/finance/bookings', row.id]">View</a>
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit booking' : 'New booking'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field">
+        <label class="form-field__label">Offering</label>
+        <select class="form-select" formControlName="offeringId">
+          <option value="">Select offering</option>
+          @for (offering of offerings; track offering.id) { <option [value]="offering.id">{{ offering.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Customer</label>
+        <select class="form-select" formControlName="customerId">
+          <option value="">Select customer</option>
+          @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Start date<span class="form-field__required">*</span></label><input class="form-input" type="date" formControlName="bookingStartDate" /></div>
+      <div class="form-field"><label class="form-field__label">End date<span class="form-field__required">*</span></label><input class="form-input" type="date" formControlName="bookingEndDate" /></div>
+      <div class="form-field"><label class="form-field__label">Security paid</label><input class="form-input" formControlName="securityPaid" /></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

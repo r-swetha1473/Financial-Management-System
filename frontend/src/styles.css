@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@import './styles/_tokens.css';
+@import './styles/_reset.css';
+@import './styles/_typography.css';
+@import './styles/_layout.css';
+@import './styles/components/_buttons.css';
+@import './styles/components/_cards.css';
+@import './styles/components/_forms.css';
+@import './styles/components/_tables.css';
+@import './styles/components/_badges.css';
+@import './styles/components/_shell.css';
+@import './styles/components/_auth.css';
+@import './styles/components/_dashboard.css';
+@import './styles/components/_workflow.css';
+@import './styles/components/_states.css';
+@import './styles/components/_crud.css';

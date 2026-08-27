@@ -1,0 +1,50 @@
+<div class="page">
+  <app-page-header title="Services" subtitle="Service offerings used by bookings. Catalog prices are not recognized income.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Add offering</button> }
+  </app-page-header>
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search offering or product..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No offerings" message="Add a service offering for bookings." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Offering</th><th>Product</th><th class="col-amount">Amount</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.productName || '—' }}</td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td><app-status-badge [status]="row.isActive ? 'active' : 'inactive'" /></td>
+              <td class="col-actions">@if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit offering' : 'Add offering'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field form-field--full"><label class="form-field__label">Name<span class="form-field__required">*</span></label><input class="form-input" formControlName="name" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Product</label>
+        <select class="form-select" formControlName="productId">
+          <option value="">None</option>
+          @for (product of products; track product.id) { <option [value]="product.id">{{ product.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Amount</label><input class="form-input" formControlName="amount" /></div>
+      <div class="form-field form-field--full"><label class="form-field__label">Description</label><textarea class="form-textarea" rows="2" formControlName="description"></textarea></div>
+      <div class="form-field"><label class="form-check"><input type="checkbox" formControlName="isActive" /> Active</label></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

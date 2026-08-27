@@ -1,0 +1,26 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Quotation not found" message="This quotation is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.quoteNumber" subtitle="Customer quotation in the O2C chain.">
+      <a class="btn btn--secondary" routerLink="/o2c/quotations">All quotations</a>
+      @if (canEdit() && record.status !== 'rejected') {
+        <a class="btn btn--primary" routerLink="/o2c/sales-orders" [queryParams]="{ create: '1', quotationId: record.id, customerId: record.customerId }">Create sales order</a>
+      }
+    </app-page-header>
+    <app-o2c-banner currentStep="Quotation" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName, route: '/master/customers/' + record.customerId },
+      { label: 'Quote', value: record.quoteNumber, status: record.status },
+      { label: 'Sales order', value: orders[0]?.orderNumber || 'None', route: orders[0] ? '/o2c/sales-orders/' + orders[0].id : null }
+    ]" />
+    <article class="card"><div class="card__body">
+      <dl class="detail-list">
+        <dt>Amount</dt><dd>{{ record.totalAmount | inr }}</dd>
+        <dt>Quote date</dt><dd>{{ record.quoteDate }}</dd>
+        <dt>Valid until</dt><dd>{{ record.validUntil || '—' }}</dd>
+        <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+      </dl>
+    </div></article>
+  }
+</div>

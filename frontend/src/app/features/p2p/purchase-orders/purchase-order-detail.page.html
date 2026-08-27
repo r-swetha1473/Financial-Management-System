@@ -1,0 +1,29 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Purchase order not found" message="This PO is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.poNumber" subtitle="Supplier commitment document.">
+      <a class="btn btn--secondary" routerLink="/p2p/purchase-orders">All purchase orders</a>
+      @if (canEdit() && record.status !== 'cancelled') {
+        <a class="btn btn--primary" routerLink="/p2p/receipts" [queryParams]="{ create: '1', purchaseOrderId: record.id }">Record receipt</a>
+      }
+    </app-page-header>
+    <app-p2p-banner currentStep="Purchase Order" />
+    <app-document-trail [items]="[
+      { label: 'Vendor', value: record.vendorName, route: '/master/vendors/' + record.vendorId },
+      { label: 'Request', value: record.purchaseRequestNumber || '—', route: record.purchaseRequestId ? '/p2p/purchase-requests/' + record.purchaseRequestId : null },
+      { label: 'PO', value: record.poNumber, status: record.status },
+      { label: 'Receipt', value: receipts[0]?.grnNumber || 'None', route: receipts[0] ? '/p2p/receipts/' + receipts[0].id : null }
+    ]" />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+          <dt>Vendor</dt><dd><a class="table-link" [routerLink]="['/master/vendors', record.vendorId]">{{ record.vendorName }}</a></dd>
+          <dt>Order date</dt><dd>{{ record.orderDate }}</dd>
+          <dt>Amount</dt><dd>{{ record.totalAmount | inr }}</dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

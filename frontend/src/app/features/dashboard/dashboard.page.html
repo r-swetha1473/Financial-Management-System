@@ -1,0 +1,196 @@
+<div class="page">
+  <section class="dashboard-welcome">
+    <h1>Welcome back, {{ session()?.fullName }}</h1>
+    <p>{{ session()?.organizationName }} — financial overview for the current period.</p>
+  </section>
+
+  @if (loading()) {
+    <div class="grid grid--5">
+      @for (item of [1, 2, 3, 4, 5]; track item) {
+        <div class="card skeleton skeleton--card"></div>
+      }
+    </div>
+    <app-loading-skeleton />
+  } @else if (error()) {
+    <div class="error-state">
+      <h3>Dashboard unavailable</h3>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (summary) {
+    <div class="grid grid--5">
+      <app-summary-card label="Total Income" [value]="summary.totalIncome" tone="income" meta="All collections and sales" />
+      <app-summary-card label="Total Expenses" [value]="summary.totalExpenses" tone="expense" meta="P2P and operating spend" />
+      <app-summary-card label="Net cash movement" [value]="summary.cashInHand" tone="cash" meta="This system only — no opening bank balance" />
+      <app-summary-card label="Outstanding Receivables" [value]="summary.outstandingReceivables" tone="receivable" meta="Open O2C invoices" />
+      <app-summary-card label="Outstanding Payables" [value]="summary.outstandingPayables" tone="payable" meta="Open supplier balances" />
+    </div>
+
+    <section class="dashboard-section grid grid--2">
+      <article class="card chart-card">
+        <div class="card__header">
+          <div>
+            <h3 class="card__title">Expense vs Income</h3>
+            <p class="card__subtitle">Compare operating inflows and outflows</p>
+          </div>
+          <div class="dashboard-filters">
+            @for (option of periods; track option) {
+              <button
+                class="filter-chip"
+                type="button"
+                [class.is-active]="period() === option"
+                (click)="setPeriod(option)"
+              >
+                {{ option }}
+              </button>
+            }
+          </div>
+        </div>
+        <div class="card__body">
+          <canvas #trendCanvas height="240"></canvas>
+        </div>
+      </article>
+
+      <article class="card chart-card">
+        <div class="card__header">
+          <div>
+            <h3 class="card__title">Expense by category</h3>
+            <p class="card__subtitle">Where spend is concentrated</p>
+          </div>
+        </div>
+        <div class="card__body">
+          <canvas #categoryCanvas height="240"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-section grid grid--2">
+      <article class="card">
+        <div class="card__header">
+          <h3 class="card__title">Cash position</h3>
+        </div>
+        <div class="card__body cash-position-list">
+          @for (account of cashPosition; track account.accountName) {
+            <div class="cash-position-item">
+              <div>
+                <div class="cash-position-item__name">{{ account.accountName }}</div>
+                <div class="cash-position-item__type">{{ account.accountType }}</div>
+              </div>
+              <div class="amount">{{ account.balance | inr }}</div>
+            </div>
+          }
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card__header">
+          <h3 class="card__title">Product financial summary</h3>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="col-amount">Income</th>
+                <th class="col-amount">Expenses</th>
+                <th class="col-amount">Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (product of products; track product.productId) {
+                <tr>
+                  <td>{{ product.productName }}</td>
+                  <td class="col-amount amount--positive">{{ product.totalIncome | inr }}</td>
+                  <td class="col-amount amount--negative">{{ product.totalExpenses | inr }}</td>
+                  <td class="col-amount">{{ product.net | inr }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-section">
+      <h3 class="dashboard-section__title">Recent expenses</h3>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Expense ID</th>
+              <th>Vendor</th>
+              <th>Category</th>
+              <th class="col-amount">Amount</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of expenses; track row.id) {
+              <tr>
+                <td class="text-mono">{{ row.id }}</td>
+                <td>{{ row.vendor }}</td>
+                <td>{{ row.category }}</td>
+                <td class="col-amount">{{ row.amount | inr }}</td>
+                <td>{{ row.expenseDate }}</td>
+                <td><app-status-badge [status]="row.status" /></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dashboard-section grid grid--2">
+      <div>
+        <h3 class="dashboard-section__title">Recent invoices</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th class="col-amount">Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of invoices; track row.id) {
+                <tr>
+                  <td class="text-mono">{{ row.invoiceNumber }}</td>
+                  <td>{{ row.customer }}</td>
+                  <td class="col-amount">{{ row.amount | inr }}</td>
+                  <td><app-status-badge [status]="row.status" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3 class="dashboard-section__title">Recent receipts</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Receipt</th>
+                <th>Invoice</th>
+                <th class="col-amount">Amount</th>
+                <th>Mode</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of receipts; track row.id) {
+                <tr>
+                  <td class="text-mono">{{ row.id }}</td>
+                  <td class="text-mono">{{ row.invoiceNumber }}</td>
+                  <td class="col-amount">{{ row.amount | inr }}</td>
+                  <td>{{ row.paymentMode }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  }
+</div>

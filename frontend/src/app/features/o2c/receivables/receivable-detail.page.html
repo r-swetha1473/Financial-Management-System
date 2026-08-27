@@ -1,0 +1,29 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Receivable not found" message="This receivable is not in the current organization." />
+  } @else {
+    <app-page-header title="Receivable" subtitle="Financial outstanding for an O2C sales invoice.">
+      <a class="btn btn--secondary" routerLink="/o2c/receivables">All receivables</a>
+      <a class="btn btn--secondary" [routerLink]="['/o2c/sales-invoices', record.sourceId]">Open invoice</a>
+      @if (canEdit() && record.status !== 'closed') {
+        <a class="btn btn--primary" routerLink="/o2c/collections" [queryParams]="{ create: '1', salesInvoiceId: record.sourceId }">Record collection</a>
+      }
+    </app-page-header>
+    <app-o2c-banner currentStep="Receivables" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName, route: '/master/customers/' + record.customerId },
+      { label: 'Invoice', value: record.invoiceNumber, route: '/o2c/sales-invoices/' + record.sourceId },
+      { label: 'Receivable', value: record.outstanding, status: record.status }
+    ]" />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Invoice amount</dt><dd>{{ record.amount | inr }}</dd>
+          <dt>Outstanding</dt><dd>{{ record.outstanding | inr }}</dd>
+          <dt>Due date</dt><dd>{{ record.dueDate }}</dd>
+          <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

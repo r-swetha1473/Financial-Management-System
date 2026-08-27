@@ -1,0 +1,42 @@
+<div class="page">
+  <app-page-header title="Receivables" subtitle="Outstanding customer balances created with each O2C sales invoice. Not a free-form ledger." />
+  <app-o2c-banner currentStep="Receivables" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
+      <option value="">All customers</option>
+      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="open">Open</option>
+      <option value="partial">Partial</option>
+      <option value="closed">Closed</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No receivables" message="Receivables appear when an O2C sales invoice is recorded." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Invoice</th><th>Customer</th><th class="col-amount">Amount</th><th class="col-amount">Outstanding</th><th>Due</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td><a class="table-link" [routerLink]="['/o2c/sales-invoices', row.sourceId]">{{ row.invoiceNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a></td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td class="col-amount">{{ row.outstanding | inr }}</td>
+              <td>{{ row.dueDate }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions"><a class="btn btn--ghost btn--sm" [routerLink]="['/o2c/receivables', row.id]">View</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+</div>

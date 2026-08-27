@@ -1,0 +1,71 @@
+<div class="page">
+  @if (!customer) {
+    <app-empty-state title="Customer not found" message="This customer is not in the current organization." />
+  } @else {
+    <app-page-header [title]="customer.name" subtitle="Customer record isolated to the signed-in organization.">
+      <a class="btn btn--secondary" routerLink="/master/customers">All customers</a>
+      @if (canEdit()) {
+        <a class="btn btn--primary" routerLink="/o2c/quotations" [queryParams]="{ create: '1', customerId: customer.id }">New quotation</a>
+      }
+    </app-page-header>
+    <app-o2c-banner currentStep="Customer" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: customer.name },
+      { label: 'Quotations', value: '' + quotations.length },
+      { label: 'Bookings', value: '' + bookings.length },
+      { label: 'Invoices', value: '' + legacyInvoices.length }
+    ]" />
+    <article class="card">
+      <div class="card__header"><h3 class="card__title">Customer information</h3></div>
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Address</dt><dd>{{ customer.address || '—' }}</dd>
+          <dt>GSTIN</dt><dd class="text-mono">{{ customer.gstin || '—' }}</dd>
+          <dt>State</dt><dd>{{ customer.state || '—' }}</dd>
+          <dt>Credit limit</dt><dd>{{ customer.creditLimit || '—' }}</dd>
+          <dt>Address proof</dt><dd>{{ customer.addressProofName ? customer.addressProofName + ' (' + customer.addressProofSize + ')' : 'Not uploaded' }}</dd>
+          <dt>Created</dt><dd>{{ customer.createdAt }}</dd>
+        </dl>
+      </div>
+    </article>
+    <section class="dashboard-section grid grid--2">
+      <div>
+        <h3 class="dashboard-section__title">O2C quotations & sales invoices</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Document</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (row of quotations; track row.id) {
+                <tr><td><a class="table-link" [routerLink]="['/o2c/quotations', row.id]">{{ row.quoteNumber }}</a></td><td><app-status-badge [status]="row.status" /></td></tr>
+              }
+              @for (row of invoices; track row.id) {
+                <tr><td><a class="table-link" [routerLink]="['/o2c/sales-invoices', row.id]">{{ row.invoiceNumber }}</a></td><td><app-status-badge [status]="row.status" /></td></tr>
+              }
+              @if (quotations.length === 0 && invoices.length === 0) { <tr><td colspan="2">None yet</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3 class="dashboard-section__title">Bookings, invoices & receipts</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Document</th><th>Status / date</th></tr></thead>
+            <tbody>
+              @for (row of bookings; track row.id) {
+                <tr><td><a class="table-link" [routerLink]="['/finance/bookings', row.id]">{{ row.offeringName }}</a></td><td>{{ row.bookingStartDate }}</td></tr>
+              }
+              @for (row of legacyInvoices; track row.id) {
+                <tr><td><a class="table-link" [routerLink]="['/finance/invoices', row.id]">{{ row.invoiceNumber }}</a></td><td><app-status-badge [status]="row.status" /></td></tr>
+              }
+              @for (row of receipts; track row.id) {
+                <tr><td><a class="table-link" [routerLink]="['/finance/receipts', row.id]">{{ row.invoiceNumber }} receipt</a></td><td>{{ row.receiptDate }}</td></tr>
+              }
+              @if (bookings.length === 0 && legacyInvoices.length === 0) { <tr><td colspan="2">None yet</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  }
+</div>

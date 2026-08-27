@@ -1,0 +1,82 @@
+<div class="page">
+  <app-page-header title="Categories & Subcategories" subtitle="Classification for expenses and reporting. Subcategories belong to a category.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCategory()">Add category</button> }
+  </app-page-header>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else {
+    <div class="detail-grid">
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Categories</h3></div>
+        <div class="card__body">
+          @if (categories.length === 0) { <app-empty-state title="No categories" message="Add a category to classify expenses." /> }
+          @else {
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                @for (row of categories; track row.id) {
+                  <tr [class.is-selected]="row.id === selectedCategoryId">
+                    <td><button class="table-link" type="button" (click)="selectedCategoryId = row.id; loadSubs()">{{ row.name }}</button></td>
+                    <td><app-status-badge [status]="row.isActive ? 'active' : 'inactive'" /></td>
+                    <td>@if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openCategory(row)">Edit</button> }</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </article>
+      <article class="card">
+        <div class="card__header">
+          <h3 class="card__title">Subcategories</h3>
+          @if (canEdit() && selectedCategoryId) { <button class="btn btn--secondary btn--sm" type="button" (click)="openSub()">Add subcategory</button> }
+        </div>
+        <div class="card__body">
+          @if (subcategories.length === 0) { <p class="text-secondary">No subcategories for this category.</p> }
+          @else {
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                @for (row of subcategories; track row.id) {
+                  <tr>
+                    <td>{{ row.name }}</td>
+                    <td><app-status-badge [status]="row.isActive ? 'active' : 'inactive'" /></td>
+                    <td>@if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openSub(row)">Edit</button> }</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </article>
+    </div>
+  }
+  <app-modal [open]="categoryModal()" [title]="editingCategory ? 'Edit category' : 'Add category'" (closed)="categoryModal.set(false)">
+    <form class="form-grid" [formGroup]="categoryForm">
+      <div class="form-field form-field--full"><label class="form-field__label">Name<span class="form-field__required">*</span></label><input class="form-input" formControlName="name" /></div>
+      <div class="form-field form-field--full"><label class="form-field__label">Description</label><textarea class="form-textarea" rows="2" formControlName="description"></textarea></div>
+      <div class="form-field"><label class="form-check"><input type="checkbox" formControlName="isActive" /> Active</label></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="categoryModal.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="saveCategory()">Save</button>
+    </div>
+  </app-modal>
+  <app-modal [open]="subModal()" [title]="editingSub ? 'Edit subcategory' : 'Add subcategory'" (closed)="subModal.set(false)">
+    <form class="form-grid" [formGroup]="subForm">
+      <div class="form-field">
+        <label class="form-field__label">Category</label>
+        <select class="form-select" formControlName="categoryId">
+          @for (row of categories; track row.id) { <option [value]="row.id">{{ row.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Name<span class="form-field__required">*</span></label><input class="form-input" formControlName="name" /></div>
+      <div class="form-field form-field--full"><label class="form-field__label">Description</label><input class="form-input" formControlName="description" /></div>
+      <div class="form-field"><label class="form-check"><input type="checkbox" formControlName="isActive" /> Active</label></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="subModal.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="saveSub()">Save</button>
+    </div>
+  </app-modal>
+</div>

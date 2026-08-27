@@ -1,0 +1,32 @@
+<div class="page">
+  <app-page-header
+    title="Order-to-Cash"
+    subtitle="Move customer demand from quotation to collection. Receivables stay inside the current organization."
+  />
+
+  <section class="workflow-banner workflow-banner--o2c">
+    <div>
+      <div class="workflow-banner__title">O2C process</div>
+      <p class="workflow-banner__desc">
+        Customer → Quotation → Sales Order → Delivery / Service → Sales Invoice → Payment Collection → Receivables
+      </p>
+      <div class="workflow-steps">
+        @for (step of steps; track step; let last = $last) {
+          <span class="workflow-step">{{ step }}</span>
+          @if (!last) {
+            <span class="workflow-step__arrow">→</span>
+          }
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="overview-grid">
+    @for (item of items; track item.route) {
+      <a class="overview-card overview-card--o2c" [routerLink]="item.route">
+        <h3>{{ item.label }}</h3>
+        <p>Open the {{ item.label.toLowerCase() }} workspace for this organization.</p>
+      </a>
+    }
+  </div>
+</div>

@@ -1,0 +1,83 @@
+<div class="page">
+  <app-page-header title="Sales Orders" subtitle="Confirm customer orders. A quotation is optional; a customer is required.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New sales order</button> }
+  </app-page-header>
+  <app-o2c-banner currentStep="Sales Order" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search order or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
+      <option value="">All customers</option>
+      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="confirmed">Confirmed</option>
+      <option value="fulfilled">Fulfilled</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No sales orders" message="Create a sales order from an accepted quotation or directly for a customer." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Order</th><th>Customer</th><th>Quotation</th><th>Date</th><th class="col-amount">Amount</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/o2c/sales-orders', row.id]">{{ row.orderNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a></td>
+              <td>
+                @if (row.quotationId) { <a class="table-link" [routerLink]="['/o2c/quotations', row.quotationId]">{{ row.quoteNumber }}</a> }
+                @else { — }
+              </td>
+              <td>{{ row.orderDate }}</td>
+              <td class="col-amount">{{ row.totalAmount | inr }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/o2c/sales-orders', row.id]">View</a>
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit sales order' : 'New sales order'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field"><label class="form-field__label">Order number<span class="form-field__required">*</span></label><input class="form-input" formControlName="orderNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Customer<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="customerId">
+          <option value="">Select customer</option>
+          @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Quotation</label>
+        <select class="form-select" formControlName="quotationId">
+          <option value="">None</option>
+          @for (quote of quotations; track quote.id) { <option [value]="quote.id">{{ quote.quoteNumber }} — {{ quote.customerName }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Order date</label><input class="form-input" type="date" formControlName="orderDate" /></div>
+      <div class="form-field"><label class="form-field__label">Amount</label><input class="form-input" formControlName="totalAmount" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="confirmed">Confirmed</option>
+          <option value="fulfilled">Fulfilled</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

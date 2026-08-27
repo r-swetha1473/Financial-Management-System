@@ -1,0 +1,115 @@
+<div class="page">
+  <app-page-header title="Vendors" subtitle="Supplier master data for this organization. Used across P2P documents.">
+    @if (canEdit()) {
+      <button class="btn btn--primary" type="button" (click)="openCreate()">Add vendor</button>
+    }
+  </app-page-header>
+
+  <app-p2p-banner currentStep="Supplier/Vendor" />
+
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search name, email, GST..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+
+  @if (loading()) {
+    <app-loading-skeleton />
+  } @else if (error()) {
+    <div class="error-state"><h3>{{ error() }}</h3></div>
+  } @else if (items.length === 0) {
+    <div class="card"><app-empty-state title="No vendors" message="Add a supplier to start the procure-to-pay flow." /></div>
+  } @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Vendor</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>POC</th>
+            <th>GST</th>
+            <th>Created</th>
+            <th>Status</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>
+                <a class="table-link" [routerLink]="['/master/vendors', row.id]">{{ row.name }}</a>
+                <div class="text-muted">{{ row.address }}</div>
+              </td>
+              <td>{{ row.phone || '—' }}</td>
+              <td>{{ row.email || '—' }}</td>
+              <td>{{ row.pocName || '—' }}</td>
+              <td class="text-mono">{{ row.gstin || '—' }}</td>
+              <td>{{ row.createdAt }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/master/vendors', row.id]">View</a>
+                @if (canEdit()) {
+                  <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit vendor' : 'Add vendor'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form" (ngSubmit)="save()">
+      <div class="form-field">
+        <label class="form-field__label">Vendor name<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="name" placeholder="Legal supplier name" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Address</label>
+        <textarea class="form-textarea" formControlName="address" rows="2"></textarea>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Phone</label>
+        <input class="form-input" formControlName="phone" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Email</label>
+        <input class="form-input" type="email" formControlName="email" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">POC name</label>
+        <input class="form-input" formControlName="pocName" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">POC email</label>
+        <input class="form-input" type="email" formControlName="pocEmail" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">GST number</label>
+        <input class="form-input" formControlName="gstin" placeholder="GSTIN" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">State</label>
+        <input class="form-input" formControlName="state" />
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save vendor</button>
+    </div>
+  </app-modal>
+</div>

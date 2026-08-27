@@ -1,0 +1,49 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Invoice not found" message="This supplier invoice is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.invoiceNumber" subtitle="Supplier invoice. Outstanding is invoice amount less completed payments.">
+      <a class="btn btn--secondary" routerLink="/p2p/supplier-invoices">All invoices</a>
+      @if (canApprove() && record.approvalStatus === 'pending') {
+        <button class="btn btn--secondary" type="button" [disabled]="deciding()" (click)="reject()">Reject</button>
+        <button class="btn btn--primary" type="button" [disabled]="deciding()" (click)="approve()">Approve</button>
+      }
+      @if (canEdit() && record.approvalStatus === 'approved' && record.status !== 'paid' && record.status !== 'cancelled') {
+        <a class="btn btn--primary" routerLink="/p2p/payments" [queryParams]="{ create: '1', supplierInvoiceId: record.id }">Record payment</a>
+      }
+    </app-page-header>
+    <app-p2p-banner currentStep="Supplier Invoice" />
+    <app-document-trail [items]="[
+      { label: 'Vendor', value: record.vendorName, route: '/master/vendors/' + record.vendorId },
+      { label: 'PO', value: record.poNumber || '—', route: record.purchaseOrderId ? '/p2p/purchase-orders/' + record.purchaseOrderId : null },
+      { label: 'Receipt', value: record.grnNumber || '—', route: record.goodsReceiptId ? '/p2p/receipts/' + record.goodsReceiptId : null },
+      { label: 'Invoice', value: record.invoiceNumber, status: record.status },
+      { label: 'Payable', value: payable?.status || '—', route: payable ? '/p2p/payables/' + payable.id : null }
+    ]" />
+    <div class="detail-grid">
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Summary</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <dt>Amount</dt><dd>{{ record.amount | inr }}</dd>
+            <dt>GST amount</dt><dd>{{ record.gstAmount | inr }}</dd>
+            <dt>Outstanding</dt><dd>{{ outstanding | inr }}</dd>
+            <dt>Approval</dt><dd><app-status-badge [status]="record.approvalStatus" /></dd>
+            <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+            <dt>Date</dt><dd>{{ record.invoiceDate }}</dd>
+          </dl>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Payments</h3></div>
+        <div class="card__body">
+          @for (payment of payments; track payment.id) {
+            <p><a class="table-link" [routerLink]="['/p2p/payments', payment.id]">{{ payment.paymentDate }}</a> — {{ payment.amount | inr }} ({{ payment.paymentMode }})</p>
+          } @empty {
+            <p class="text-secondary">No payments recorded.</p>
+          }
+        </div>
+      </article>
+    </div>
+  }
+</div>

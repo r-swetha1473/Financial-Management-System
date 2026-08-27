@@ -1,0 +1,39 @@
+<div class="page">
+  <app-page-header title="Income" subtitle="Income is taken from invoices and collections already recorded. Accrual and cash rows are labelled separately and are not added together." />
+  <app-finance-banner description="No separate income ledger is invented. Open a document to see the customer, booking, or plan." />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search document or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="sourceType" (change)="page = 1; load()">
+      <option value="">All sources</option>
+      <option value="invoice">Existing invoices</option>
+      <option value="sales_invoice">O2C sales invoices</option>
+      <option value="receipt">Receipts</option>
+      <option value="collection">O2C collections</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No income documents" message="Record a sales invoice or receipt to see income here." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Source</th><th>Document</th><th>Customer</th><th>Date</th><th class="col-amount">Amount</th><th class="col-amount">GST</th><th>Status</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ sourceLabel(row.sourceType) }}</td>
+              <td><a class="table-link" [routerLink]="row.sourceRoute">{{ row.documentNumber }}</a></td>
+              <td>{{ row.customerName || '—' }}</td>
+              <td>{{ row.date }}</td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td class="col-amount">{{ row.gstAmount | inr }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+</div>

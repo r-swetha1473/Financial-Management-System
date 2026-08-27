@@ -1,0 +1,43 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Request not found" message="This purchase request is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.requestNumber" subtitle="Purchase request in the P2P chain.">
+      <a class="btn btn--secondary" routerLink="/p2p/purchase-requests">All requests</a>
+      @if (canApprove() && (record.status === 'draft' || record.status === 'submitted')) {
+        <button class="btn btn--secondary" type="button" [disabled]="deciding()" (click)="reject()">Reject</button>
+        <button class="btn btn--primary" type="button" [disabled]="deciding()" (click)="approve()">Approve</button>
+      }
+      @if (canEdit() && record.status === 'approved') {
+        <a class="btn btn--primary" routerLink="/p2p/purchase-orders" [queryParams]="{ create: '1', purchaseRequestId: record.id, vendorId: record.vendorId }">Create purchase order</a>
+      }
+      @if (canEdit() && record.status !== 'approved' && record.status !== 'converted' && record.status !== 'rejected') {
+        <a class="btn btn--secondary" routerLink="/p2p/purchase-orders" [queryParams]="{ create: '1', vendorId: record.vendorId }">Create purchase order without this request</a>
+      }
+    </app-page-header>
+    <app-p2p-banner currentStep="Purchase Request" />
+    <app-document-trail
+      [items]="[
+        { label: 'Vendor', value: record.vendorName || 'Unassigned', route: record.vendorId ? '/master/vendors/' + record.vendorId : null },
+        { label: 'Request', value: record.requestNumber, status: record.status },
+        { label: 'Purchase orders', value: relatedOrders[0]?.poNumber || 'None', route: relatedOrders[0] ? '/p2p/purchase-orders/' + relatedOrders[0].id : null }
+      ]"
+    />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+          <dt>Vendor</dt>
+          <dd>
+            @if (record.vendorId) {
+              <a class="table-link" [routerLink]="['/master/vendors', record.vendorId]">{{ record.vendorName }}</a>
+            } @else { Unassigned }
+          </dd>
+          <dt>Date</dt><dd>{{ record.requestedDate }}</dd>
+          <dt>Entered by</dt><dd>{{ record.requestedByName }}</dd>
+          <dt>Notes</dt><dd>{{ record.notes || '—' }}</dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

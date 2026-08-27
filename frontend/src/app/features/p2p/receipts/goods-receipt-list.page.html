@@ -1,0 +1,67 @@
+<div class="page">
+  <app-page-header title="Goods / Service Receipts" subtitle="Record what was received against a purchase order. A PO is required.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New receipt</button> }
+  </app-page-header>
+  <app-p2p-banner currentStep="Goods/Service Receipt" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search GRN, PO, vendor..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="received">Received</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No receipts" message="Record a receipt after goods or services arrive." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>GRN</th><th>Purchase order</th><th>Vendor</th><th>Date</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/p2p/receipts', row.id]">{{ row.grnNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/p2p/purchase-orders', row.purchaseOrderId]">{{ row.poNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/vendors', row.vendorId]">{{ row.vendorName }}</a></td>
+              <td>{{ row.receiptDate }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/p2p/receipts', row.id]">View</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" title="Record receipt" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field"><label class="form-field__label">GRN number<span class="form-field__required">*</span></label><input class="form-input" formControlName="grnNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Purchase order<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="purchaseOrderId">
+          <option value="">Select issued PO</option>
+          @for (order of receivableOrders; track order.id) {
+            <option [value]="order.id">{{ order.poNumber }} — {{ order.vendorName }}</option>
+          }
+        </select>
+        <span class="form-field__hint">Only issued purchase orders can be received. The list comes from the live API.</span>
+      </div>
+      <div class="form-field"><label class="form-field__label">Receipt date</label><input class="form-input" type="date" formControlName="receiptDate" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="received">Received</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

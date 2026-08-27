@@ -1,0 +1,25 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Payment not found" message="This payment is not in the current organization." />
+  } @else {
+    <app-page-header [title]="'Payment ' + record.paymentDate" subtitle="Supplier payment against an invoice.">
+      <a class="btn btn--secondary" routerLink="/p2p/payments">All payments</a>
+    </app-page-header>
+    <app-p2p-banner currentStep="Payment" />
+    <app-document-trail [items]="[
+      { label: 'Vendor', value: record.vendorName, route: '/master/vendors/' + record.vendorId },
+      { label: 'Invoice', value: record.invoiceNumber, route: '/p2p/supplier-invoices/' + record.supplierInvoiceId },
+      { label: 'Payment', value: record.amount, status: record.status }
+    ]" />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Amount</dt><dd>{{ record.amount | inr }}</dd>
+          <dt>Mode</dt><dd>{{ record.paymentMode }}</dd>
+          <dt>Date</dt><dd>{{ record.paymentDate }}</dd>
+          <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

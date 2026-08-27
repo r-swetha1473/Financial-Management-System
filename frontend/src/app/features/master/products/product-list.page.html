@@ -1,0 +1,60 @@
+<div class="page">
+  <app-page-header title="Products" subtitle="Product catalog for this organization, including VIN and model fields from existing records.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Add product</button> }
+  </app-page-header>
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search name, model, VIN..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No products" message="Add a product to classify expenses and offerings." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Product</th><th>Model</th><th>VIN</th><th>Battery</th><th>Color</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.model || '—' }}</td>
+              <td class="text-mono">{{ row.vinNumber || '—' }}</td>
+              <td>{{ row.batteryType || '—' }}</td>
+              <td>{{ row.bodyColor || '—' }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit product' : 'Add product'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field form-field--full"><label class="form-field__label">Name<span class="form-field__required">*</span></label><input class="form-input" formControlName="name" /></div>
+      <div class="form-field"><label class="form-field__label">Model</label><input class="form-input" formControlName="model" /></div>
+      <div class="form-field"><label class="form-field__label">VIN</label><input class="form-input" formControlName="vinNumber" /></div>
+      <div class="form-field"><label class="form-field__label">Battery type</label><input class="form-input" formControlName="batteryType" /></div>
+      <div class="form-field"><label class="form-field__label">Body color</label><input class="form-input" formControlName="bodyColor" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

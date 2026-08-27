@@ -1,0 +1,115 @@
+<div class="page">
+  <app-page-header title="Purchase Requests" subtitle="Ask for goods or services before a purchase order is issued.">
+    @if (canEdit()) {
+      <button class="btn btn--primary" type="button" (click)="openCreate()">New request</button>
+    }
+  </app-page-header>
+  <app-p2p-banner currentStep="Purchase Request" />
+
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search number, vendor, notes..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="vendorId" (change)="page = 1; load()">
+      <option value="">All vendors</option>
+      @for (vendor of vendors; track vendor.id) {
+        <option [value]="vendor.id">{{ vendor.name }}</option>
+      }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="draft">Draft</option>
+      <option value="submitted">Submitted</option>
+      <option value="approved">Approved</option>
+      <option value="rejected">Rejected</option>
+      <option value="converted">Converted</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+
+  @if (loading()) {
+    <app-loading-skeleton />
+  } @else if (error()) {
+    <div class="error-state"><h3>{{ error() }}</h3></div>
+  } @else if (items.length === 0) {
+    <div class="card"><app-empty-state title="No purchase requests" message="Create a request to start the P2P chain." /></div>
+  } @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Request</th>
+            <th>Vendor</th>
+            <th>Date</th>
+            <th>Entered by</th>
+            <th>Status</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/p2p/purchase-requests', row.id]">{{ row.requestNumber }}</a></td>
+              <td>
+                @if (row.vendorId) {
+                  <a class="table-link" [routerLink]="['/master/vendors', row.vendorId]">{{ row.vendorName }}</a>
+                } @else {
+                  —
+                }
+              </td>
+              <td>{{ row.requestedDate }}</td>
+              <td>{{ row.requestedByName }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/p2p/purchase-requests', row.id]">View</a>
+                @if (canApprove() && (row.status === 'draft' || row.status === 'submitted')) {
+                  <button class="btn btn--ghost btn--sm" type="button" (click)="approve(row)">Approve</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit purchase request' : 'New purchase request'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field">
+        <label class="form-field__label">Request number<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="requestNumber" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Vendor</label>
+        <select class="form-select" formControlName="vendorId">
+          <option value="">Not assigned yet</option>
+          @for (vendor of vendors; track vendor.id) {
+            <option [value]="vendor.id">{{ vendor.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Request date</label>
+        <input class="form-input" type="date" formControlName="requestedDate" />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="draft">Draft</option>
+          <option value="submitted">Submitted</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="converted">Converted</option>
+        </select>
+        <span class="form-field__hint">Only approved requests can be converted to a purchase order.</span>
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Notes</label>
+        <textarea class="form-textarea" rows="3" formControlName="notes" placeholder="What is being requested"></textarea>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

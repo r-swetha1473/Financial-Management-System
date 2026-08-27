@@ -1,0 +1,26 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Receipt not found" message="This receipt is not in the current organization." />
+  } @else {
+    <app-page-header [title]="'Receipt ' + record.receiptDate" subtitle="Collection against an existing invoice.">
+      <a class="btn btn--secondary" routerLink="/finance/receipts">All receipts</a>
+    </app-page-header>
+    <app-existing-sales-banner currentStep="Receipt" />
+    <app-document-trail [items]="[
+      { label: 'Invoice', value: record.invoiceNumber, route: '/finance/invoices/' + record.invoiceId },
+      { label: 'Receipt', value: record.receiptAmount }
+    ]" />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Amount</dt><dd>{{ record.receiptAmount | inr }}</dd>
+          <dt>Pending after receipt</dt><dd>{{ record.pendingAmount | inr }}</dd>
+          <dt>Mode</dt><dd>{{ record.paymentMode }}</dd>
+          <dt>UPI last 4</dt><dd>{{ record.transactionLast4 || '—' }}</dd>
+          <dt>Date</dt><dd>{{ record.receiptDate }}</dd>
+          <dt>Entered by</dt><dd>{{ record.enteredBy }}</dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

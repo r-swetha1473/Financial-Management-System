@@ -1,0 +1,108 @@
+<div class="page">
+  @if (!loading() && !vendor) {
+    <app-empty-state title="Vendor not found" message="This supplier is not in the current organization." />
+  } @else if (vendor) {
+    <app-page-header [title]="vendor.name" subtitle="Supplier record isolated to the signed-in organization.">
+      <a class="btn btn--secondary" routerLink="/master/vendors">Back to vendors</a>
+      @if (canEdit()) {
+        <a class="btn btn--primary" routerLink="/p2p/purchase-requests" [queryParams]="{ vendorId: vendor.id, create: '1' }">New purchase request</a>
+      }
+    </app-page-header>
+
+    <app-p2p-banner currentStep="Supplier/Vendor" />
+
+    <app-document-trail
+      [items]="[
+        { label: 'Vendor', value: vendor.name, status: vendor.status },
+        { label: 'Requests', value: '' + requests.length },
+        { label: 'Receipts', value: '' + receipts.length },
+        { label: 'Invoices', value: '' + invoices.length }
+      ]"
+    />
+
+    <div class="detail-grid">
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Overview</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <dt>Status</dt><dd><app-status-badge [status]="vendor.status" /></dd>
+            <dt>Created</dt><dd>{{ vendor.createdAt }}</dd>
+            <dt>Address</dt><dd>{{ vendor.address || '—' }}</dd>
+          </dl>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Contact & GST</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <dt>Phone</dt><dd>{{ vendor.phone || '—' }}</dd>
+            <dt>Email</dt><dd>{{ vendor.email || '—' }}</dd>
+            <dt>POC</dt><dd>{{ vendor.pocName || '—' }}</dd>
+            <dt>POC email</dt><dd>{{ vendor.pocEmail || '—' }}</dd>
+            <dt>GSTIN</dt><dd class="text-mono">{{ vendor.gstin || '—' }}</dd>
+            <dt>State</dt><dd>{{ vendor.state || '—' }}</dd>
+          </dl>
+        </div>
+      </article>
+    </div>
+
+    <section class="dashboard-section">
+      <h3 class="dashboard-section__title">Purchase requests</h3>
+      <div class="data-table-wrap related-table">
+        <table class="data-table">
+          <thead><tr><th>Request</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody>
+            @for (row of requests; track row.id) {
+              <tr>
+                <td><a class="table-link" [routerLink]="['/p2p/purchase-requests', row.id]">{{ row.requestNumber }}</a></td>
+                <td>{{ row.requestedDate }}</td>
+                <td><app-status-badge [status]="row.status" /></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="3">No requests for this vendor.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dashboard-section grid grid--2">
+      <div>
+        <h3 class="dashboard-section__title">Purchase orders</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>PO</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (row of orders; track row.id) {
+                <tr>
+                  <td><a class="table-link" [routerLink]="['/p2p/purchase-orders', row.id]">{{ row.poNumber }}</a></td>
+                  <td><app-status-badge [status]="row.status" /></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="2">None</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3 class="dashboard-section__title">Supplier invoices & payments</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Invoice</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (row of invoices; track row.id) {
+                <tr>
+                  <td><a class="table-link" [routerLink]="['/p2p/supplier-invoices', row.id]">{{ row.invoiceNumber }}</a></td>
+                  <td><app-status-badge [status]="row.status" /></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="2">None</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  }
+</div>

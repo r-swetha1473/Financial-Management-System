@@ -1,0 +1,47 @@
+<aside class="app-shell__sidebar" [class.is-collapsed]="collapsed" [class.is-mobile-open]="mobileOpen">
+  <div class="sidebar__brand">
+    <div class="sidebar__logo">
+      <app-brand-mark size="sm" />
+    </div>
+    <div class="sidebar__brand-text">
+      <div class="sidebar__brand-name">LedgerFlow</div>
+      <div class="sidebar__brand-tagline">Business Finance</div>
+    </div>
+  </div>
+
+  <nav class="sidebar__nav" aria-label="Primary">
+    @for (section of sections(); track section.label + $index) {
+      <div class="sidebar__section">
+        @if (section.label) {
+          @if (overviewRoute(section.module); as overview) {
+            <a class="sidebar__section-label sidebar__section-label--link" [routerLink]="overview" (click)="onNavigate()">
+              {{ section.label }}
+            </a>
+          } @else {
+            <div class="sidebar__section-label">{{ section.label }}</div>
+          }
+        }
+        @for (item of section.items; track item.route) {
+          @if (item.comingSoon) {
+            <span class="sidebar__link is-disabled" title="Coming soon" aria-disabled="true">
+              <app-nav-icon [name]="item.icon" />
+              <span class="sidebar__link-label">{{ item.label }}</span>
+              <span class="sidebar__soon">Soon</span>
+            </span>
+          } @else {
+            <a
+              class="sidebar__link"
+              [routerLink]="item.route"
+              routerLinkActive="is-active"
+              [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/reports' }"
+              (click)="onNavigate()"
+            >
+              <app-nav-icon [name]="item.icon" />
+              <span class="sidebar__link-label">{{ item.label }}</span>
+            </a>
+          }
+        }
+      </div>
+    }
+  </nav>
+</aside>

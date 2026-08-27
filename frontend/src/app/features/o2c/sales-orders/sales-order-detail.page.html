@@ -1,0 +1,31 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Sales order not found" message="This sales order is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.orderNumber" subtitle="Confirmed customer order in the O2C chain.">
+      <a class="btn btn--secondary" routerLink="/o2c/sales-orders">All sales orders</a>
+      @if (canEdit() && record.status !== 'cancelled') {
+        <a class="btn btn--primary" routerLink="/o2c/deliveries" [queryParams]="{ create: '1', salesOrderId: record.id }">Record delivery</a>
+      }
+    </app-page-header>
+    <app-o2c-banner currentStep="Sales Order" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName, route: '/master/customers/' + record.customerId },
+      { label: 'Quote', value: record.quoteNumber || '—', route: record.quotationId ? '/o2c/quotations/' + record.quotationId : null },
+      { label: 'Sales order', value: record.orderNumber, status: record.status },
+      { label: 'Delivery', value: deliveries[0]?.deliveryNumber || 'None', route: deliveries[0] ? '/o2c/deliveries/' + deliveries[0].id : null }
+    ]" />
+    <article class="card"><div class="card__body">
+      <dl class="detail-list">
+        <dt>Amount</dt><dd>{{ record.totalAmount | inr }}</dd>
+        <dt>Order date</dt><dd>{{ record.orderDate }}</dd>
+        <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+        <dt>Sales invoice</dt>
+        <dd>
+          @if (invoices[0]) { <a class="table-link" [routerLink]="['/o2c/sales-invoices', invoices[0].id]">{{ invoices[0].invoiceNumber }}</a> }
+          @else { None }
+        </dd>
+      </dl>
+    </div></article>
+  }
+</div>

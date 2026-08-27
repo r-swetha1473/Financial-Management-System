@@ -1,0 +1,46 @@
+<div class="page">
+  <app-page-header title="Settings" subtitle="Organization profile for this workspace. Currency and timezone preferences are not stored." />
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else {
+    <article class="card">
+      <div class="card__header"><h3 class="card__title">Organization</h3></div>
+      <div class="card__body">
+        <form class="form-grid" [formGroup]="form">
+          <div class="form-field form-field--full">
+            <label class="form-field__label">Name<span class="form-field__required">*</span></label>
+            <input class="form-input" formControlName="name" [readOnly]="!canEdit()" />
+          </div>
+          <div class="form-field">
+            <label class="form-field__label">Slug<span class="form-field__required">*</span></label>
+            <input class="form-input" formControlName="slug" [readOnly]="!canEdit()" />
+            @if (form.controls.slug.touched && form.controls.slug.hasError('pattern')) {
+              <span class="form-field__error">Use lowercase letters, numbers, and hyphens.</span>
+            }
+          </div>
+          <div class="form-field">
+            <label class="form-field__label">Status</label>
+            <select class="form-select" formControlName="isActive" [disabled]="!canEdit()">
+              <option [ngValue]="true">Active</option>
+              <option [ngValue]="false">Inactive</option>
+            </select>
+            <span class="form-field__hint">Inactive organizations cannot sign in from the demo store.</span>
+          </div>
+        </form>
+        @if (canEdit()) {
+          <div style="margin-top: 1rem;">
+            <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save organization</button>
+          </div>
+        }
+      </div>
+    </article>
+    <section class="workflow-banner" style="margin-top: 1.25rem;">
+      <div>
+        <div class="workflow-banner__title">Automation</div>
+        <p class="workflow-banner__desc">
+          Scheduled posting, auto-reconciliation, and posting P2P payments or O2C collections to bank accounts are not in the current records and are not enabled.
+        </p>
+      </div>
+    </section>
+  }
+</div>

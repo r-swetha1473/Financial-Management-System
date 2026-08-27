@@ -1,0 +1,97 @@
+<div class="page">
+  <app-page-header title="Invoices" subtitle="Existing sales invoices linked to bookings and plans. Pending is invoice amount less receipts. Separate from O2C sales invoices.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New invoice</button> }
+  </app-page-header>
+  <app-existing-sales-banner currentStep="Invoice" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
+      <option value="">All customers</option>
+      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="partially_paid">Partially paid</option>
+      <option value="paid">Paid</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No invoices" message="Record an invoice against a booking or customer." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Invoice</th><th>Customer</th><th>Booking / Plan</th><th class="col-amount">Amount</th><th class="col-amount">Pending</th><th>GST</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/finance/invoices', row.id]">{{ row.invoiceNumber }}</a></td>
+              <td>
+                @if (row.customerId) { <a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a> }
+                @else { — }
+              </td>
+              <td>
+                @if (row.bookingId) { <a class="table-link" [routerLink]="['/finance/bookings', row.bookingId]">{{ row.bookingLabel || 'Booking' }}</a> }
+                @if (row.planName) { <div>{{ row.planName }}</div> }
+                @if (!row.bookingId && !row.planName) { — }
+              </td>
+              <td class="col-amount">{{ row.invoiceAmount | inr }}</td>
+              <td class="col-amount">{{ outstanding(row.id) | inr }}</td>
+              <td>{{ row.isGstInvoice ? (row.gstAmount | inr) : 'No' }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/finance/invoices', row.id]">View</a>
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit invoice' : 'New invoice'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field"><label class="form-field__label">Invoice number<span class="form-field__required">*</span></label><input class="form-input" formControlName="invoiceNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Customer</label>
+        <select class="form-select" formControlName="customerId">
+          <option value="">Select customer</option>
+          @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Booking</label>
+        <select class="form-select" formControlName="bookingId">
+          <option value="">None</option>
+          @for (booking of bookings; track booking.id) { <option [value]="booking.id">{{ booking.offeringName }} — {{ booking.customerName }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Plan</label>
+        <select class="form-select" formControlName="planId">
+          <option value="">None</option>
+          @for (plan of plans; track plan.id) { <option [value]="plan.id">{{ plan.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Raised date</label><input class="form-input" type="date" formControlName="invoiceRaisedDate" /></div>
+      <div class="form-field"><label class="form-field__label">Security deposited</label><input class="form-input" formControlName="securityAmountDeposited" /></div>
+      <div class="form-field"><label class="form-field__label">Invoice amount</label><input class="form-input" formControlName="invoiceAmount" /></div>
+      <div class="form-field">
+        <label class="form-field__label">GST invoice</label>
+        <label class="form-check"><input type="checkbox" formControlName="isGstInvoice" /> GST applies</label>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">GST amount</label>
+        <input class="form-input" formControlName="gstAmount" />
+        <span class="form-field__hint">Stored separately. Not added to the invoice amount.</span>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

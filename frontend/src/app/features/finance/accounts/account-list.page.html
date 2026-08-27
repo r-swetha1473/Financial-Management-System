@@ -1,0 +1,56 @@
+<div class="page">
+  <app-page-header title="Bank / Cash Accounts" subtitle="Organization accounts. Opening balance is set on create; later changes go through transactions.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Add account</button> }
+  </app-page-header>
+  <app-finance-banner description="Credit increases the account. Debit decreases it. Payments and collections are not posted here automatically." />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search account..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No accounts" message="Add a bank or cash account." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Account</th><th>Type</th><th>Number</th><th class="col-amount">Balance</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td><a class="table-link" [routerLink]="['/finance/transactions']" [queryParams]="{ accountId: row.id }">{{ row.name }}</a></td>
+              <td>{{ row.accountType }}</td>
+              <td class="text-mono">{{ row.accountNumber || '—' }}</td>
+              <td class="col-amount">{{ row.balance | inr }}</td>
+              <td><app-status-badge [status]="row.isActive ? 'active' : 'inactive'" /></td>
+              <td class="col-actions">@if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit account' : 'Open account'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field form-field--full"><label class="form-field__label">Name<span class="form-field__required">*</span></label><input class="form-input" formControlName="name" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Type</label>
+        <select class="form-select" formControlName="accountType">
+          <option value="bank">Bank</option>
+          <option value="cash">Cash</option>
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Account number</label><input class="form-input" formControlName="accountNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">{{ editing ? 'Balance (read from book)' : 'Opening balance' }}</label>
+        <input class="form-input" formControlName="balance" [readOnly]="!!editing" />
+        @if (editing) { <span class="form-field__hint">Change balance by posting a transaction.</span> }
+      </div>
+      <div class="form-field"><label class="form-check"><input type="checkbox" formControlName="isActive" /> Active</label></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

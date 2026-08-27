@@ -1,0 +1,82 @@
+<div class="page">
+  <app-page-header title="Collections" subtitle="Apply customer payments to an O2C sales invoice. Amount cannot exceed outstanding.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Record collection</button> }
+  </app-page-header>
+  <app-o2c-banner currentStep="Payment Collection" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice, customer, mode..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No collections" message="Record a collection against an O2C sales invoice." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th class="col-amount">Amount</th><th>Mode</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.collectionDate }}</td>
+              <td><a class="table-link" [routerLink]="['/o2c/sales-invoices', row.salesInvoiceId]">{{ row.invoiceNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a></td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td>{{ row.paymentMode }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions"><a class="btn btn--ghost btn--sm" [routerLink]="['/o2c/collections', row.id]">View</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" title="Record collection" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Sales invoice<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="salesInvoiceId">
+          <option value="">Select invoice</option>
+          @for (invoice of invoices; track invoice.id) {
+            @if (invoice.approvalStatus === 'approved' && invoice.status !== 'paid' && invoice.status !== 'cancelled') {
+              <option [value]="invoice.id">{{ invoice.invoiceNumber }} — {{ invoice.customerName }}</option>
+            }
+          }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Collection date</label><input class="form-input" type="date" formControlName="collectionDate" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Mode</label>
+        <select class="form-select" formControlName="paymentMode">
+          <option value="Cash">Cash</option>
+          <option value="Card">Card</option>
+          <option value="UPI">UPI</option>
+        </select>
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Amount<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="amount" [class.is-error]="!!amountError" />
+        @if (amountError) { <span class="form-field__error">{{ amountError }}</span> }
+      </div>
+    </form>
+    <div class="payment-summary">
+      <div class="payment-summary__row"><span>Invoice amount</span><strong>{{ invoiceAmount | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Already collected</span><strong>{{ alreadyPaid | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Outstanding</span><strong>{{ outstanding | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Remaining after this collection</span><strong>{{ remainingAfter | inr }}</strong></div>
+    </div>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="!!amountError" (click)="requestSave()">Continue</button>
+    </div>
+  </app-modal>
+  <app-confirm-dialog
+    [open]="confirmOpen()"
+    title="Confirm collection"
+    message="Record this customer collection? Outstanding will be reduced. Final validation must be done by the server when FastAPI is available."
+    confirmLabel="Record collection"
+    [busy]="saving()"
+    (confirmed)="confirmSave()"
+    (cancelled)="confirmOpen.set(false)"
+  />
+</div>

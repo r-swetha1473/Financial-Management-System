@@ -1,0 +1,37 @@
+<div class="page">
+  <app-page-header title="Reconciliation" subtitle="Match book transactions for an account. Bank statement import is not in the current records." />
+  <app-finance-banner description="Mark posted transactions as reconciled. This does not import a bank file." />
+  <div class="toolbar">
+    <select class="form-select" [(ngModel)]="accountId" (change)="load()">
+      @for (account of accounts; track account.id) { <option [value]="account.id">{{ account.name }}</option> }
+    </select>
+  </div>
+  @if (selected()) {
+    <p class="form-field__hint">Book balance {{ selected()!.balance | inr }} · Unmatched movement {{ unmatchedTotal() | inr }}</p>
+  }
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No transactions" message="Post transactions against this account to reconcile them." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Type</th><th class="col-amount">Amount</th><th>Description</th><th>Status</th><th class="col-actions">Match</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.transactionDate }}</td>
+              <td><app-status-badge [status]="row.transactionType" /></td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td>{{ row.description || '—' }}</td>
+              <td>{{ row.reconciled ? 'Reconciled' : 'Unmatched' }}</td>
+              <td class="col-actions">
+                @if (canEdit()) {
+                  <button class="btn btn--ghost btn--sm" type="button" (click)="toggle(row)">{{ row.reconciled ? 'Unmatch' : 'Match' }}</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

@@ -1,0 +1,49 @@
+<div class="page">
+  <app-page-header title="Expenses" subtitle="Operational spend posted as a finance debit. This is not a P2P supplier invoice.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New expense</button> }
+  </app-page-header>
+  <app-finance-banner description="Only cost, date, description, and optional vendor are stored. GST, category, SKU, and attachments are not collected until those columns exist. Optional vendor is display-only — not a P2P document link." />
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No expenses" message="Record operational spend for this organization." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Vendor</th><th>Item</th><th class="col-amount">Cost</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.expenseDate }}</td>
+              <td>
+                @if (row.vendorId) { <a class="table-link" [routerLink]="['/master/vendors', row.vendorId]">{{ row.vendorName }}</a> }
+                @else { — }
+              </td>
+              <td>{{ row.productServiceName || '—' }}</td>
+              <td class="col-amount">{{ row.cost | inr }}</td>
+              <td class="col-actions">@if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" title="New expense" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field">
+        <label class="form-field__label">Vendor</label>
+        <select class="form-select" formControlName="vendorId">
+          <option value="">None</option>
+          @for (vendor of vendors; track vendor.id) { <option [value]="vendor.id">{{ vendor.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Description</label><input class="form-input" formControlName="productServiceName" /></div>
+      <div class="form-field"><label class="form-field__label">Cost</label><input class="form-input" formControlName="cost" /></div>
+      <div class="form-field"><label class="form-field__label">Date</label><input class="form-input" type="date" formControlName="expenseDate" /></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

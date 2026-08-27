@@ -1,0 +1,28 @@
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: var(--font-semibold);
+  line-height: 1.25;
+  color: var(--color-text);
+}
+
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+h4 { font-size: var(--text-lg); }
+
+.text-secondary { color: var(--color-text-secondary); }
+.text-muted { color: var(--color-text-muted); }
+.text-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.text-right { text-align: right; }
+.text-success { color: var(--color-success); }
+.text-danger { color: var(--color-danger); }
+.text-warning { color: var(--color-warning); }
+
+.amount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-medium);
+}
+
+.amount--positive { color: var(--color-success); }
+.amount--negative { color: var(--color-danger); }

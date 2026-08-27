@@ -1,0 +1,27 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Receipt not found" message="This GRN is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.grnNumber" subtitle="Goods or service receipt against a purchase order.">
+      <a class="btn btn--secondary" routerLink="/p2p/receipts">All receipts</a>
+      @if (canEdit() && record.status === 'received') {
+        <a class="btn btn--primary" routerLink="/p2p/supplier-invoices" [queryParams]="{ create: '1', goodsReceiptId: record.id, purchaseOrderId: record.purchaseOrderId, vendorId: record.vendorId }">Create supplier invoice</a>
+      }
+    </app-page-header>
+    <app-p2p-banner currentStep="Goods/Service Receipt" />
+    <app-document-trail [items]="[
+      { label: 'Vendor', value: record.vendorName, route: '/master/vendors/' + record.vendorId },
+      { label: 'PO', value: record.poNumber, route: '/p2p/purchase-orders/' + record.purchaseOrderId },
+      { label: 'Receipt', value: record.grnNumber, status: record.status },
+      { label: 'Invoice', value: invoices[0]?.invoiceNumber || 'None', route: invoices[0] ? '/p2p/supplier-invoices/' + invoices[0].id : null }
+    ]" />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+          <dt>Receipt date</dt><dd>{{ record.receiptDate }}</dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

@@ -1,0 +1,37 @@
+<div class="page">
+  <app-page-header title="Documents" subtitle="File metadata for this organization. Object-storage keys are stored; files are not served as public URLs.">
+    @if (canEdit()) {
+      <label class="btn btn--primary">
+        Add metadata
+        <input type="file" hidden (change)="onFile($event)" />
+      </label>
+    }
+  </app-page-header>
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search file or entity..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No documents" message="Attach a file from expenses or add metadata here." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>File</th><th>Entity</th><th>Size</th><th>Storage key</th><th>Uploaded by</th><th>Date</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.fileName }}</td>
+              <td>{{ row.entityName }} / {{ row.entityId }}</td>
+              <td>{{ row.fileSize }}</td>
+              <td class="text-mono">{{ row.storageKey }}</td>
+              <td>{{ row.uploadedBy }}</td>
+              <td>{{ row.createdAt }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+</div>

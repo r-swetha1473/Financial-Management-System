@@ -1,0 +1,25 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Delivery not found" message="This delivery is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.deliveryNumber" subtitle="Delivery or service completion against a sales order.">
+      <a class="btn btn--secondary" routerLink="/o2c/deliveries">All deliveries</a>
+      @if (canEdit() && record.status === 'delivered') {
+        <a class="btn btn--primary" routerLink="/o2c/sales-invoices" [queryParams]="{ create: '1', deliveryId: record.id, salesOrderId: record.salesOrderId, customerId: record.customerId }">Create sales invoice</a>
+      }
+    </app-page-header>
+    <app-o2c-banner currentStep="Delivery / Service" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName, route: '/master/customers/' + record.customerId },
+      { label: 'Sales order', value: record.orderNumber, route: '/o2c/sales-orders/' + record.salesOrderId },
+      { label: 'Delivery', value: record.deliveryNumber, status: record.status },
+      { label: 'Invoice', value: invoices[0]?.invoiceNumber || 'None', route: invoices[0] ? '/o2c/sales-invoices/' + invoices[0].id : null }
+    ]" />
+    <article class="card"><div class="card__body">
+      <dl class="detail-list">
+        <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+        <dt>Delivery date</dt><dd>{{ record.deliveryDate }}</dd>
+      </dl>
+    </div></article>
+  }
+</div>

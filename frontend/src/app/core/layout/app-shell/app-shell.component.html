@@ -1,0 +1,10 @@
+<div class="app-shell">
+  <div class="sidebar-backdrop" [class.is-visible]="mobileOpen()" (click)="closeMobile()"></div>
+  <app-sidebar [collapsed]="collapsed()" [mobileOpen]="mobileOpen()" (navigate)="closeMobile()" />
+  <div class="app-shell__main">
+    <app-topbar (menuToggle)="toggleCollapsed()" (collapseToggle)="toggleCollapsed()" />
+    <main class="app-shell__content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

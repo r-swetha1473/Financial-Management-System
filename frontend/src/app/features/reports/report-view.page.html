@@ -1,0 +1,53 @@
+<div class="page">
+  @if (!model) {
+    <app-empty-state title="Report not found" message="This report is not configured." />
+  } @else {
+    <app-page-header [title]="model.title" [subtitle]="model.subtitle">
+      <a class="btn btn--secondary" routerLink="/reports">All reports</a>
+      @if (canExport()) { <button class="btn btn--primary" type="button" (click)="exportCsv()">Download CSV</button> }
+    </app-page-header>
+    @if (model.note) { <p class="form-field__hint">{{ model.note }}</p> }
+    @if (model.kpis.length) {
+      <section class="dashboard-section grid grid--3">
+        @for (kpi of model.kpis; track kpi.label) {
+          @if (kpi.format === 'text') {
+            <article class="card summary-card">
+              <span class="summary-card__label">{{ kpi.label }}</span>
+              <span class="summary-card__value">{{ kpi.value }}</span>
+            </article>
+          } @else {
+            <app-summary-card [label]="kpi.label" [value]="kpi.value" [tone]="kpi.tone || 'cash'" />
+          }
+        }
+      </section>
+    }
+    @if (model.rows.length === 0) {
+      <div class="card"><app-empty-state title="No rows" message="There is no data in the current organization for this report." /></div>
+    } @else {
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              @for (column of model.columns; track column.key) {
+                <th [class.col-amount]="column.type === 'money'">{{ column.label }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of model.rows; track $index) {
+              <tr>
+                @for (column of model.columns; track column.key) {
+                  <td [class.col-amount]="column.type === 'money'">
+                    @if (column.type === 'money') { {{ row[column.key] | inr }} }
+                    @else if (column.type === 'status') { <app-status-badge [status]="row[column.key]" /> }
+                    @else { {{ row[column.key] || '—' }} }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</div>

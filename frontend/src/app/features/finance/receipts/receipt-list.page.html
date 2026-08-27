@@ -1,0 +1,87 @@
+<div class="page">
+  <app-page-header title="Receipts / Payments" subtitle="Collections against existing invoices by cash, card, or UPI. UPI requires last 4 digits. Amount cannot exceed outstanding.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Record receipt</button> }
+  </app-page-header>
+  <app-existing-sales-banner currentStep="Receipt" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice or mode..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No receipts" message="Record a receipt against an existing invoice." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Invoice</th><th class="col-amount">Amount</th><th class="col-amount">Pending after</th><th>Mode</th><th>UPI last 4</th><th>Entered by</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.receiptDate }}</td>
+              <td><a class="table-link" [routerLink]="['/finance/invoices', row.invoiceId]">{{ row.invoiceNumber }}</a></td>
+              <td class="col-amount">{{ row.receiptAmount | inr }}</td>
+              <td class="col-amount">{{ row.pendingAmount | inr }}</td>
+              <td>{{ row.paymentMode }}</td>
+              <td>{{ row.transactionLast4 || '—' }}</td>
+              <td>{{ row.enteredBy }}</td>
+              <td class="col-actions"><a class="btn btn--ghost btn--sm" [routerLink]="['/finance/receipts', row.id]">View</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" title="Record receipt" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Invoice<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="invoiceId">
+          <option value="">Select invoice</option>
+          @for (invoice of invoices; track invoice.id) { <option [value]="invoice.id">{{ invoice.invoiceNumber }} — {{ invoice.customerName }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Receipt date</label><input class="form-input" type="date" formControlName="receiptDate" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Mode</label>
+        <select class="form-select" formControlName="paymentMode">
+          <option value="Cash">Cash</option>
+          <option value="Card">Card</option>
+          <option value="UPI">UPI</option>
+        </select>
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Amount<span class="form-field__required">*</span></label>
+        <input class="form-input" formControlName="receiptAmount" [class.is-error]="!!amountError" />
+        @if (amountError) { <span class="form-field__error">{{ amountError }}</span> }
+      </div>
+      @if (form.controls.paymentMode.value === 'UPI') {
+        <div class="form-field form-field--full">
+          <label class="form-field__label">UPI last 4 digits<span class="form-field__required">*</span></label>
+          <input class="form-input" formControlName="transactionLast4" maxlength="4" inputmode="numeric" [class.is-error]="!!upiError" />
+          @if (upiError) { <span class="form-field__error">{{ upiError }}</span> }
+          <span class="form-field__hint">Exactly 4 digits. Required for UPI.</span>
+        </div>
+      }
+    </form>
+    <div class="payment-summary">
+      <div class="payment-summary__row"><span>Invoice amount</span><strong>{{ invoiceAmount | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Already received</span><strong>{{ alreadyPaid | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Outstanding</span><strong>{{ outstanding | inr }}</strong></div>
+      <div class="payment-summary__row"><span>Pending after this receipt</span><strong>{{ remainingAfter | inr }}</strong></div>
+    </div>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="!!amountError || !!upiError" (click)="requestSave()">Continue</button>
+    </div>
+  </app-modal>
+  <app-confirm-dialog
+    [open]="confirmOpen()"
+    title="Confirm receipt"
+    message="Record this receipt? Pending will be reduced. Final validation must be done by the server when FastAPI is available."
+    confirmLabel="Record receipt"
+    [busy]="saving()"
+    (confirmed)="confirmSave()"
+    (cancelled)="confirmOpen.set(false)"
+  />
+</div>

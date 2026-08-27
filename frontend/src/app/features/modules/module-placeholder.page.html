@@ -1,0 +1,24 @@
+<div class="page">
+  <app-page-header [title]="page().title" [subtitle]="page().subtitle" />
+
+  @if (page().workflow) {
+    <section class="workflow-banner" [class]="bannerClass()">
+      <div>
+        <div class="workflow-banner__title">{{ page().workflow === 'p2p' ? 'Procure-to-Pay' : 'Order-to-Cash' }}</div>
+        <p class="workflow-banner__desc">Current stage: {{ page().currentStep }}</p>
+        <div class="workflow-steps">
+          @for (step of steps(); track step) {
+            <span class="workflow-step" [class.is-current]="step === page().currentStep">{{ step }}</span>
+          }
+        </div>
+      </div>
+    </section>
+  }
+
+  <article class="card">
+    <app-empty-state
+      [title]="page().title + ' workspace'"
+      [message]="'This module is part of the core product. Operational screens land in Phase ' + page().phase + '. Navigation, permissions, and organization isolation are already in place.'"
+    />
+  </article>
+</div>

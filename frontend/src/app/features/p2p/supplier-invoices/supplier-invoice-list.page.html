@@ -1,0 +1,79 @@
+<div class="page">
+  <app-page-header title="Supplier Invoices" subtitle="Supplier bills. GST amount is stored separately and is not added in the UI.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New supplier invoice</button> }
+  </app-page-header>
+  <app-p2p-banner currentStep="Supplier Invoice" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice, vendor, PO..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="vendorId" (change)="page = 1; load()">
+      <option value="">All vendors</option>
+      @for (vendor of vendors; track vendor.id) { <option [value]="vendor.id">{{ vendor.name }}</option> }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="partially_paid">Partially paid</option>
+      <option value="paid">Paid</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No supplier invoices" message="Record a supplier invoice against a received goods receipt." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Invoice</th><th>Vendor</th><th>PO / GRN</th><th class="col-amount">Amount</th><th>Approval</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/p2p/supplier-invoices', row.id]">{{ row.invoiceNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/vendors', row.vendorId]">{{ row.vendorName }}</a></td>
+              <td>
+                @if (row.purchaseOrderId) { <a class="table-link" [routerLink]="['/p2p/purchase-orders', row.purchaseOrderId]">{{ row.poNumber }}</a> }
+                @if (row.goodsReceiptId) { <div><a class="table-link" [routerLink]="['/p2p/receipts', row.goodsReceiptId]">{{ row.grnNumber }}</a></div> }
+              </td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td><app-status-badge [status]="row.approvalStatus" /></td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/p2p/supplier-invoices', row.id]">View</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" title="New supplier invoice" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field"><label class="form-field__label">Invoice number</label><input class="form-input" formControlName="invoiceNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Goods/service receipt<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="goodsReceiptId">
+          <option value="">Select received GRN</option>
+          @for (receipt of invoiceableReceipts; track receipt.id) {
+            <option [value]="receipt.id">{{ receipt.grnNumber }} — {{ receipt.vendorName }}</option>
+          }
+        </select>
+        <span class="form-field__hint">Only received GRNs that are not already invoiced. Matches the API rule.</span>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Vendor<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="vendorId">
+          <option value="">From the selected GRN</option>
+          @for (vendor of vendors; track vendor.id) { <option [value]="vendor.id">{{ vendor.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Invoice date</label><input class="form-input" type="date" formControlName="invoiceDate" /></div>
+      <div class="form-field"><label class="form-field__label">Amount</label><input class="form-input" formControlName="amount" /></div>
+      <div class="form-field"><label class="form-field__label">GST amount</label><input class="form-input" formControlName="gstAmount" /></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

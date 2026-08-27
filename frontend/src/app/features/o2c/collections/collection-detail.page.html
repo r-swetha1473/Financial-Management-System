@@ -1,0 +1,25 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Collection not found" message="This collection is not in the current organization." />
+  } @else {
+    <app-page-header [title]="'Collection ' + record.collectionDate" subtitle="Customer collection against an O2C sales invoice.">
+      <a class="btn btn--secondary" routerLink="/o2c/collections">All collections</a>
+    </app-page-header>
+    <app-o2c-banner currentStep="Payment Collection" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName, route: '/master/customers/' + record.customerId },
+      { label: 'Invoice', value: record.invoiceNumber, route: '/o2c/sales-invoices/' + record.salesInvoiceId },
+      { label: 'Collection', value: record.amount, status: record.status }
+    ]" />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Amount</dt><dd>{{ record.amount | inr }}</dd>
+          <dt>Mode</dt><dd>{{ record.paymentMode }}</dd>
+          <dt>Date</dt><dd>{{ record.collectionDate }}</dd>
+          <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

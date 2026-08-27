@@ -1,0 +1,49 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Sales invoice not found" message="This sales invoice is not in the current organization." />
+  } @else {
+    <app-page-header [title]="record.invoiceNumber" subtitle="O2C sales invoice. Outstanding is invoice amount less completed collections.">
+      <a class="btn btn--secondary" routerLink="/o2c/sales-invoices">All sales invoices</a>
+      @if (canApprove() && record.approvalStatus === 'pending') {
+        <button class="btn btn--secondary" type="button" [disabled]="deciding()" (click)="reject()">Reject</button>
+        <button class="btn btn--primary" type="button" [disabled]="deciding()" (click)="approve()">Approve</button>
+      }
+      @if (canEdit() && record.approvalStatus === 'approved' && record.status !== 'paid' && record.status !== 'cancelled') {
+        <a class="btn btn--primary" routerLink="/o2c/collections" [queryParams]="{ create: '1', salesInvoiceId: record.id }">Record collection</a>
+      }
+    </app-page-header>
+    <app-o2c-banner currentStep="Sales Invoice" />
+    <app-document-trail [items]="[
+      { label: 'Customer', value: record.customerName, route: '/master/customers/' + record.customerId },
+      { label: 'Sales order', value: record.orderNumber || '—', route: record.salesOrderId ? '/o2c/sales-orders/' + record.salesOrderId : null },
+      { label: 'Delivery', value: record.deliveryNumber || '—', route: record.deliveryId ? '/o2c/deliveries/' + record.deliveryId : null },
+      { label: 'Invoice', value: record.invoiceNumber, status: record.status },
+      { label: 'Receivable', value: receivable?.status || '—', route: receivable ? '/o2c/receivables/' + receivable.id : null }
+    ]" />
+    <div class="detail-grid">
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Summary</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <dt>Amount</dt><dd>{{ record.amount | inr }}</dd>
+            <dt>GST amount</dt><dd>{{ record.gstAmount | inr }}</dd>
+            <dt>Outstanding</dt><dd>{{ outstanding | inr }}</dd>
+            <dt>Approval</dt><dd><app-status-badge [status]="record.approvalStatus" /></dd>
+            <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+            <dt>Date</dt><dd>{{ record.invoiceDate }}</dd>
+          </dl>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">Collections</h3></div>
+        <div class="card__body">
+          @for (row of collections; track row.id) {
+            <p><a class="table-link" [routerLink]="['/o2c/collections', row.id]">{{ row.collectionDate }}</a> — {{ row.amount | inr }} ({{ row.paymentMode }})</p>
+          } @empty {
+            <p class="text-secondary">No collections recorded.</p>
+          }
+        </div>
+      </article>
+    </div>
+  }
+</div>

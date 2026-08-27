@@ -1,0 +1,32 @@
+<div class="page">
+  <app-page-header
+    title="Procure-to-Pay"
+    subtitle="Control supplier spend from request through payment. Each organization has isolated P2P records."
+  />
+
+  <section class="workflow-banner workflow-banner--p2p">
+    <div>
+      <div class="workflow-banner__title">P2P process</div>
+      <p class="workflow-banner__desc">
+        Supplier → Purchase Request → Purchase Order → Goods/Service Receipt → Supplier Invoice → Approval → Payment → Payables
+      </p>
+      <div class="workflow-steps">
+        @for (step of steps; track step; let last = $last) {
+          <span class="workflow-step">{{ step }}</span>
+          @if (!last) {
+            <span class="workflow-step__arrow">→</span>
+          }
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="overview-grid">
+    @for (item of items; track item.route) {
+      <a class="overview-card overview-card--p2p" [routerLink]="item.route">
+        <h3>{{ item.label }}</h3>
+        <p>Open {{ item.label.toLowerCase() }} for this organization.</p>
+      </a>
+    }
+  </div>
+</div>

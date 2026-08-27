@@ -1,0 +1,102 @@
+<div class="page">
+  <app-page-header title="Sales Invoices" subtitle="Bill customers in the O2C chain. GST amount is stored separately and is not added in the UI. Separate from existing booking invoices.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New sales invoice</button> }
+  </app-page-header>
+  <app-o2c-banner currentStep="Sales Invoice" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search invoice or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
+      <option value="">All customers</option>
+      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+    </select>
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="partially_paid">Partially paid</option>
+      <option value="paid">Paid</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No sales invoices" message="Record a sales invoice after a delivery or sales order." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Invoice</th><th>Customer</th><th>Order / Delivery</th><th class="col-amount">Amount</th><th class="col-amount">Outstanding</th><th>Approval</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/o2c/sales-invoices', row.id]">{{ row.invoiceNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a></td>
+              <td>
+                @if (row.salesOrderId) { <a class="table-link" [routerLink]="['/o2c/sales-orders', row.salesOrderId]">{{ row.orderNumber }}</a> }
+                @if (row.deliveryId) { <div><a class="table-link" [routerLink]="['/o2c/deliveries', row.deliveryId]">{{ row.deliveryNumber }}</a></div> }
+                @if (!row.salesOrderId && !row.deliveryId) { — }
+              </td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td class="col-amount">{{ outstanding(row) | inr }}</td>
+              <td><app-status-badge [status]="row.approvalStatus || 'pending'" /></td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/o2c/sales-invoices', row.id]">View</a>
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit sales invoice' : 'New sales invoice'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field"><label class="form-field__label">Invoice number<span class="form-field__required">*</span></label><input class="form-input" formControlName="invoiceNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Customer<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="customerId">
+          <option value="">Select customer</option>
+          @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Sales order</label>
+        <select class="form-select" formControlName="salesOrderId">
+          <option value="">None</option>
+          @for (order of orders; track order.id) { <option [value]="order.id">{{ order.orderNumber }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Delivery<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="deliveryId">
+          <option value="">Select delivery</option>
+          @for (delivery of invoiceableDeliveries; track delivery.id) {
+            <option [value]="delivery.id">{{ delivery.deliveryNumber }}</option>
+          }
+        </select>
+        <span class="form-field__hint">Only delivered notes that are not already invoiced can be billed.</span>
+      </div>
+      <div class="form-field"><label class="form-field__label">Invoice date</label><input class="form-input" type="date" formControlName="invoiceDate" /></div>
+      <div class="form-field"><label class="form-field__label">Amount</label><input class="form-input" formControlName="amount" /></div>
+      <div class="form-field">
+        <label class="form-field__label">GST amount</label>
+        <input class="form-input" formControlName="gstAmount" />
+        <span class="form-field__hint">Stored separately. Not added to the invoice amount.</span>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="pending">Pending</option>
+          <option value="partially_paid">Partially paid</option>
+          <option value="paid">Paid</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

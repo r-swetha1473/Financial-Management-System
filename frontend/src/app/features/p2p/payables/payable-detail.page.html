@@ -1,0 +1,26 @@
+<div class="page">
+  @if (!record) {
+    <app-empty-state title="Payable not found" message="This payable is not in the current organization." />
+  } @else {
+    <app-page-header title="Payable" subtitle="Financial outstanding for a supplier invoice.">
+      <a class="btn btn--secondary" routerLink="/p2p/payables">All payables</a>
+      <a class="btn btn--primary" [routerLink]="['/p2p/supplier-invoices', record.sourceId]">Open invoice</a>
+    </app-page-header>
+    <app-p2p-banner currentStep="Payables" />
+    <app-document-trail [items]="[
+      { label: 'Vendor', value: record.vendorName, route: '/master/vendors/' + record.vendorId },
+      { label: 'Invoice', value: record.invoiceNumber, route: '/p2p/supplier-invoices/' + record.sourceId },
+      { label: 'Payable', value: record.outstanding, status: record.status }
+    ]" />
+    <article class="card">
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Invoice amount</dt><dd>{{ record.amount | inr }}</dd>
+          <dt>Outstanding</dt><dd>{{ record.outstanding | inr }}</dd>
+          <dt>Due date</dt><dd>{{ record.dueDate }}</dd>
+          <dt>Status</dt><dd><app-status-badge [status]="record.status" /></dd>
+        </dl>
+      </div>
+    </article>
+  }
+</div>

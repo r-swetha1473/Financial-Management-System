@@ -1,0 +1,68 @@
+<div class="page">
+  <app-page-header title="Deliveries / Services" subtitle="Record delivery or service completion against a sales order. A sales order is required.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New delivery</button> }
+  </app-page-header>
+  <app-o2c-banner currentStep="Delivery / Service" />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search delivery, order, customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
+      <option value="">All statuses</option>
+      <option value="delivered">Delivered</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No deliveries" message="Record a delivery after a sales order is confirmed." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Delivery</th><th>Sales order</th><th>Customer</th><th>Date</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td class="text-mono"><a class="table-link" [routerLink]="['/o2c/deliveries', row.id]">{{ row.deliveryNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/o2c/sales-orders', row.salesOrderId]">{{ row.orderNumber }}</a></td>
+              <td><a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a></td>
+              <td>{{ row.deliveryDate }}</td>
+              <td><app-status-badge [status]="row.status" /></td>
+              <td class="col-actions">
+                <a class="btn btn--ghost btn--sm" [routerLink]="['/o2c/deliveries', row.id]">View</a>
+                @if (canEdit()) { <button class="btn btn--ghost btn--sm" type="button" (click)="openEdit(row)">Edit</button> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit delivery' : 'Record delivery'" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field"><label class="form-field__label">Delivery number<span class="form-field__required">*</span></label><input class="form-input" formControlName="deliveryNumber" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Sales order<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="salesOrderId">
+          <option value="">Select sales order</option>
+          @for (order of deliverableOrders; track order.id) {
+            <option [value]="order.id">{{ order.orderNumber }} — {{ order.customerName }}</option>
+          }
+        </select>
+        <span class="form-field__hint">Only confirmed or fulfilled sales orders can be delivered.</span>
+      </div>
+      <div class="form-field"><label class="form-field__label">Delivery date</label><input class="form-input" type="date" formControlName="deliveryDate" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Status</label>
+        <select class="form-select" formControlName="status">
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+    </div>
+  </app-modal>
+</div>

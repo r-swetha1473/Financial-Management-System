@@ -1,0 +1,71 @@
+<div class="page">
+  <app-page-header title="Transactions" subtitle="Debit and credit movements on bank and cash accounts. Credit = money in. Debit = money out.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Post transaction</button> }
+  </app-page-header>
+  <app-finance-banner description="Posting updates the account balance in this workspace. The server must re-check this in a database transaction when FastAPI is available." />
+  <div class="toolbar">
+    <input class="form-input toolbar__search" placeholder="Search description or account..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
+    <select class="form-select" [(ngModel)]="accountId" (change)="page = 1; load()">
+      <option value="">All accounts</option>
+      @for (account of accounts; track account.id) { <option [value]="account.id">{{ account.name }}</option> }
+    </select>
+    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+  </div>
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No transactions" message="Post a debit or credit against an account." /></div> }
+  @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Account</th><th>Type</th><th class="col-amount">Amount</th><th>Description</th><th>Reconciled</th></tr></thead>
+        <tbody>
+          @for (row of items; track row.id) {
+            <tr>
+              <td>{{ row.transactionDate }}</td>
+              <td>{{ row.accountName }}</td>
+              <td><app-status-badge [status]="row.transactionType" /></td>
+              <td class="col-amount">{{ row.amount | inr }}</td>
+              <td>{{ row.description || '—' }}</td>
+              <td>{{ row.reconciled ? 'Yes' : 'No' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-pagination [page]="page" [total]="total" (pageChange)="page = $event; load()" />
+    </div>
+  }
+  <app-modal [open]="modalOpen()" title="Post transaction" (closed)="modalOpen.set(false)">
+    <form class="form-grid" [formGroup]="form">
+      <div class="form-field">
+        <label class="form-field__label">Account<span class="form-field__required">*</span></label>
+        <select class="form-select" formControlName="accountId">
+          <option value="">Select account</option>
+          @for (account of accounts; track account.id) { <option [value]="account.id">{{ account.name }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Type</label>
+        <select class="form-select" formControlName="transactionType">
+          <option value="credit">Credit (money in)</option>
+          <option value="debit">Debit (money out)</option>
+        </select>
+      </div>
+      <div class="form-field"><label class="form-field__label">Amount</label><input class="form-input" formControlName="amount" /></div>
+      <div class="form-field"><label class="form-field__label">Date</label><input class="form-input" type="date" formControlName="transactionDate" /></div>
+      <div class="form-field form-field--full"><label class="form-field__label">Description</label><input class="form-input" formControlName="description" /></div>
+    </form>
+    <div modal-footer>
+      <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
+      <button class="btn btn--primary" type="button" (click)="requestSave()">Continue</button>
+    </div>
+  </app-modal>
+  <app-confirm-dialog
+    [open]="confirmOpen()"
+    title="Confirm posting"
+    message="Post this transaction and update the account balance? Final validation must be done by the server when FastAPI is available."
+    confirmLabel="Post transaction"
+    [busy]="saving()"
+    (confirmed)="confirmSave()"
+    (cancelled)="confirmOpen.set(false)"
+  />
+</div>

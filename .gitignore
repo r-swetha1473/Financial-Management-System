@@ -1,0 +1,37 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+/tmp
+/out-tsc
+
+# Vercel / Supabase local tooling
+.vercel
+.supabase
+
+# Logs and OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+frontend/.vscode/
+.idea/
