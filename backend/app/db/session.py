@@ -12,6 +12,8 @@ if os.environ.get("VERCEL"):
     from sqlalchemy.pool import NullPool
 
     _engine_kwargs["poolclass"] = NullPool
+    # Serverless + Supabase pooler: TLS required; disable prepared-statement cache.
+    _engine_kwargs["connect_args"] = {"ssl": True, "statement_cache_size": 0}
 
 engine = create_async_engine(settings.sqlalchemy_database_url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

@@ -11,8 +11,10 @@ class Settings(BaseSettings):
     )
 
     # Default matches Docker Compose (.env.docker, host port 5433).
-    # Override with DATABASE_URL for native PostgreSQL 17 on localhost:5432.
+    # Override with DATABASE_URL. Vercel/Supabase may also inject POSTGRES_URL.
     database_url: str = "postgresql+asyncpg://bfms:bfms_dev_password@localhost:5433/bfms"
+    postgres_url: str | None = None
+    postgres_url_non_pooling: str | None = None
     secret_key: str = "dev-secret-change-in-production"
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7
@@ -27,7 +29,14 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_database_url(self) -> str:
         """Accept postgres:// or postgresql:// from hosted providers; local URLs already include +asyncpg."""
-        url = self.database_url.strip()
+        local_default = "postgresql+asyncpg://bfms:bfms_dev_password@localhost:5433/bfms"
+        hosted = (self.postgres_url or "").strip() or (self.postgres_url_non_pooling or "").strip()
+        explicit = (self.database_url or "").strip()
+        url = explicit
+        if hosted and (not url or url == local_default):
+            url = hosted
+        if not url:
+            url = local_default
         if url.startswith("postgres://"):
             url = "postgresql://" + url[len("postgres://") :]
         if url.startswith("postgresql://"):

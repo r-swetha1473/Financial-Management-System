@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://YOUR_VERCEL_API_URL/api/v1',
+  apiUrl: 'https://financial-management-system-api.vercel.app/api/v1',
   useDevSeed: false,
 };
