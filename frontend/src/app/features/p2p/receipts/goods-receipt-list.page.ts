@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -24,6 +25,7 @@ import { P2pApiService } from '../services/p2p-api.service';
     RouterLink,
     PageHeaderComponent,
     P2pBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -101,6 +103,28 @@ export class GoodsReceiptListPage implements OnInit {
         this.error.set('Unable to load receipts.');
       },
     });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All Statuses',
+        value: this.status,
+        options: [
+          { value: 'received', label: 'Received' },
+          { value: 'cancelled', label: 'Cancelled' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

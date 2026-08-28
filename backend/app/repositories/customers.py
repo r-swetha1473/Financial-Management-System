@@ -36,6 +36,8 @@ class CustomerRepository(TenantScopedRepository):
         gst_number: str | None,
         state: str | None,
         credit_limit: Decimal | None,
+        phone: str | None,
+        drivers_license_number: str | None,
     ) -> Customer:
         customer = Customer(
             organization_id=self.tenant_id,
@@ -44,6 +46,8 @@ class CustomerRepository(TenantScopedRepository):
             gst_number=gst_number,
             state=state,
             credit_limit=credit_limit,
+            phone=phone,
+            drivers_license_number=drivers_license_number,
         )
         self.session.add(customer)
         await self.session.commit()

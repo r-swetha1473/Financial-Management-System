@@ -8,16 +8,22 @@ from decimal import Decimal
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from pydantic import ValidationError
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.core.security import hash_password
 from app.main import app
 from app.models.customer import Customer
+from app.models.document import Document
 from app.models.organization import Organization
 from app.models.user import User, UserSession
 from app.schemas.customer import CustomerCreate, CustomerOut
+
+DOCUMENTS_URL = "/api/v1/documents"
+JPEG_BYTES = b"\xff\xd8\xff\xd9"
+PDF_BYTES = b"%PDF-1.4 test-proof"
 
 CUSTOMERS_URL = "/api/v1/o2c/customers"
 LOGIN_URL = "/api/v1/auth/login"
@@ -94,10 +100,36 @@ class CustomerApiTests(unittest.TestCase):
     @classmethod
     async def _cleanup(cls) -> None:
         async def work(session: AsyncSession):
-            if cls.created_customer_ids:
-                await session.execute(delete(Customer).where(Customer.id.in_(cls.created_customer_ids)))
-            await session.execute(delete(Customer).where(Customer.name.like(f"{TEST_MARKER}%")))
+            ids = list(cls.created_customer_ids)
+            if ids:
+                await session.execute(
+                    update(Customer)
+                    .where(Customer.id.in_(ids))
+                    .values(photo_document_id=None, address_proof_document_id=None)
+                )
+                await session.execute(delete(Document).where(Document.entity_id.in_(ids)))
+                await session.execute(delete(Customer).where(Customer.id.in_(ids)))
+            marked = select(Customer.id).where(Customer.name.like(f"{TEST_MARKER}%"))
+            marked_ids = list((await session.execute(marked)).scalars().all())
+            if marked_ids:
+                await session.execute(
+                    update(Customer)
+                    .where(Customer.id.in_(marked_ids))
+                    .values(photo_document_id=None, address_proof_document_id=None)
+                )
+                await session.execute(delete(Document).where(Document.entity_id.in_(marked_ids)))
+                await session.execute(delete(Customer).where(Customer.id.in_(marked_ids)))
             if cls.org_b_id is not None:
+                org_customers = select(Customer.id).where(Customer.organization_id == cls.org_b_id)
+                org_customer_ids = list((await session.execute(org_customers)).scalars().all())
+                if org_customer_ids:
+                    await session.execute(
+                        update(Customer)
+                        .where(Customer.id.in_(org_customer_ids))
+                        .values(photo_document_id=None, address_proof_document_id=None)
+                    )
+                    await session.execute(delete(Document).where(Document.entity_id.in_(org_customer_ids)))
+                await session.execute(delete(Document).where(Document.organization_id == cls.org_b_id))
                 await session.execute(delete(Customer).where(Customer.organization_id == cls.org_b_id))
                 org_users = select(User.id).where(User.organization_id == cls.org_b_id)
                 await session.execute(delete(UserSession).where(UserSession.user_id.in_(org_users)))
@@ -147,7 +179,8 @@ class CustomerApiTests(unittest.TestCase):
         self.assertNotIn("gst_number", created)
         self.assertEqual(created["state"], "Karnataka")
         self.assertEqual(Decimal(str(created.get("creditLimit") or created.get("credit_limit"))), Decimal("250000.00"))
-        self.assertNotIn("addressProofName", created)
+        self.assertIsNone(created.get("addressProofName") or created.get("address_proof_name"))
+        self.assertIsNone(created.get("phone"))
         self.assertEqual(created["organizationId"], "00000000-0000-0000-0000-000000000001")
 
         listed = self.client.get(f"{CUSTOMERS_URL}?page=1&page_size=20", headers=self._auth(token))
@@ -209,6 +242,75 @@ class CustomerApiTests(unittest.TestCase):
         self.created_customer_ids.append(spoofed["id"])
         self.assertEqual(spoofed["organizationId"], str(self.org_b_id))
         self.assertNotEqual(spoofed["organizationId"], "00000000-0000-0000-0000-000000000001")
+
+    def test_credit_limit_rejects_non_numeric(self) -> None:
+        with self.assertRaises(ValidationError):
+            CustomerCreate(name="Acme", credit_limit="8998fdgdgddfgx xcvv")
+        token = self._login("admin@demo-business.com", "admin123")
+        response = self.client.post(
+            CUSTOMERS_URL,
+            headers=self._auth(token),
+            json={"name": f"{TEST_MARKER}{uuid4().hex[:8]}", "creditLimit": "8998fdgdgddfgx xcvv"},
+        )
+        self.assertEqual(response.status_code, 422, response.text)
+        body = response.json()
+        self.assertEqual(body["code"], "422")
+        self.assertIn("non-negative number", body["message"])
+
+    def test_create_persists_phone_license_and_uploads(self) -> None:
+        token = self._login("admin@demo-business.com", "admin123")
+        name = f"{TEST_MARKER}{uuid4().hex[:8]}"
+        create = self.client.post(
+            CUSTOMERS_URL,
+            headers=self._auth(token),
+            json={
+                "name": name,
+                "phone": "9876543210",
+                "driversLicenseNumber": "KA01 20240012345",
+                "creditLimit": "15000.00",
+            },
+        )
+        self.assertEqual(create.status_code, 201, create.text)
+        created = create.json()["data"]
+        self.created_customer_ids.append(created["id"])
+        self.assertEqual(created["phone"], "9876543210")
+        self.assertEqual(created.get("driversLicenseNumber") or created.get("drivers_license_number"), "KA01 20240012345")
+        self.assertEqual(Decimal(str(created.get("creditLimit") or created.get("credit_limit"))), Decimal("15000.00"))
+        self.assertIsNone(created.get("gstin"))
+        self.assertIsNone(created.get("photoDocumentId") or created.get("photo_document_id"))
+
+        photo = self.client.post(
+            DOCUMENTS_URL,
+            headers=self._auth(token),
+            files={"file": ("face.jpg", JPEG_BYTES, "image/jpeg")},
+            data={"entityName": "customer", "entityId": created["id"], "kind": "photo"},
+        )
+        self.assertEqual(photo.status_code, 201, photo.text)
+        proof = self.client.post(
+            DOCUMENTS_URL,
+            headers=self._auth(token),
+            files={"file": ("id.pdf", PDF_BYTES, "application/pdf")},
+            data={"entityName": "customer", "entityId": created["id"], "kind": "address_proof"},
+        )
+        self.assertEqual(proof.status_code, 201, proof.text)
+
+        fetched = self.client.get(f"{CUSTOMERS_URL}/{created['id']}", headers=self._auth(token))
+        self.assertEqual(fetched.status_code, 200, fetched.text)
+        data = fetched.json()["data"]
+        self.assertEqual(data["phone"], "9876543210")
+        self.assertEqual(data.get("photoFileName") or data.get("photo_file_name"), "face.jpg")
+        self.assertEqual(data.get("addressProofName") or data.get("address_proof_name"), "id.pdf")
+        self.assertEqual(data.get("photoDocumentId") or data.get("photo_document_id"), photo.json()["data"]["id"])
+        self.assertEqual(
+            data.get("addressProofDocumentId") or data.get("address_proof_document_id"),
+            proof.json()["data"]["id"],
+        )
+        content = self.client.get(
+            f"{DOCUMENTS_URL}/{photo.json()['data']['id']}/content",
+            headers=self._auth(token),
+        )
+        self.assertEqual(content.status_code, 200, content.text)
+        self.assertEqual(content.content, JPEG_BYTES)
 
 
 if __name__ == "__main__":

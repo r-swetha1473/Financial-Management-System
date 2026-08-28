@@ -1,7 +1,8 @@
 """P2P payable endpoints. Read-only; rows are created by payments."""
 
 from math import ceil
-from typing import Annotated
+from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,8 +22,19 @@ async def list_payables(
     session: Annotated[AsyncSession, Depends(get_db)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    vendor_id: Annotated[UUID | None, Query()] = None,
+    status: Annotated[Literal["open", "partial", "closed"] | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResponse[PayableOut]:
-    items, total = await payable_service.list_payables(session, current.tenant_id, page, page_size)
+    items, total = await payable_service.list_payables(
+        session,
+        current.tenant_id,
+        page,
+        page_size,
+        vendor_id=vendor_id,
+        status=status,
+        search=search,
+    )
     total_pages = ceil(total / page_size) if total else 0
     return PaginatedResponse(
         data=items,

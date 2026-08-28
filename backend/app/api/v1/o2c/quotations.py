@@ -10,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import CurrentUser, require_permission
 from app.db.session import get_db
 from app.schemas.common import ApiResponse, PaginatedResponse, PaginationMeta
-from app.schemas.quotation import QuotationCreate, QuotationOut
+from app.schemas.quotation import QuotationCreate, QuotationOut, QuotationStatus
 from app.services import quotation_service
 
-router = APIRouter(prefix="/quotations", tags=["O2C Quotations"])
+router = APIRouter(prefix="/quotations", tags=["O2C Subscribed Plans"])
 
 
 @router.get("", response_model=PaginatedResponse[QuotationOut])
@@ -22,8 +22,19 @@ async def list_quotations(
     session: Annotated[AsyncSession, Depends(get_db)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    customer_id: Annotated[UUID | None, Query()] = None,
+    status: Annotated[QuotationStatus | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResponse[QuotationOut]:
-    items, total = await quotation_service.list_quotations(session, current.tenant_id, page, page_size)
+    items, total = await quotation_service.list_quotations(
+        session,
+        current.tenant_id,
+        page,
+        page_size,
+        customer_id=customer_id,
+        status=status,
+        search=search,
+    )
     total_pages = ceil(total / page_size) if total else 0
     return PaginatedResponse(
         data=items,
@@ -48,4 +59,28 @@ async def create_quotation(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[QuotationOut]:
     record = await quotation_service.create_quotation(session, current.tenant_id, payload)
+    return ApiResponse(data=record)
+
+
+@router.patch("/{quotation_id}/accept", response_model=ApiResponse[QuotationOut])
+async def accept_quotation(
+    quotation_id: UUID,
+    current: Annotated[CurrentUser, Depends(require_permission("approve"))],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[QuotationOut]:
+    record = await quotation_service.decide_quotation(
+        session, current.tenant_id, current.user_id, quotation_id, "accepted"
+    )
+    return ApiResponse(data=record)
+
+
+@router.patch("/{quotation_id}/reject", response_model=ApiResponse[QuotationOut])
+async def reject_quotation(
+    quotation_id: UUID,
+    current: Annotated[CurrentUser, Depends(require_permission("approve"))],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[QuotationOut]:
+    record = await quotation_service.decide_quotation(
+        session, current.tenant_id, current.user_id, quotation_id, "rejected"
+    )
     return ApiResponse(data=record)

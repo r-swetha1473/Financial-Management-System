@@ -156,7 +156,7 @@ export class ReportService {
       subtitle: 'Sales cycle documents in the current organization.',
       note: 'O2C sales invoices are separate from existing booking invoices.',
       kpis: [
-        { label: 'Quotations', value: String(state.quotations.length), tone: 'cash', format: 'text' },
+        { label: 'Subscribed plans', value: String(state.quotations.length), tone: 'cash', format: 'text' },
         { label: 'Sales invoices', value: invoiced, tone: 'income' },
         { label: 'Collections', value: collected, tone: 'income' },
         { label: 'Receivables outstanding', value: outstanding, tone: 'receivable' },
@@ -170,7 +170,7 @@ export class ReportService {
       ],
       rows: [
         ...state.quotations.map((row) => ({
-          type: 'Quotation',
+          type: 'Subscribed plan',
           number: row.quoteNumber,
           party: row.customerName,
           amount: row.totalAmount,

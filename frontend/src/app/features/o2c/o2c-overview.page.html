@@ -1,14 +1,14 @@
 <div class="page">
   <app-page-header
     title="Order-to-Cash"
-    subtitle="Move customer demand from quotation to collection. Receivables stay inside the current organization."
+    subtitle="Move a customer from subscribed plan to collection. Receivables stay inside the current organization."
   />
 
   <section class="workflow-banner workflow-banner--o2c">
     <div>
       <div class="workflow-banner__title">O2C process</div>
       <p class="workflow-banner__desc">
-        Customer → Quotation → Sales Order → Delivery / Service → Sales Invoice → Payment Collection → Receivables
+        Customer → Subscribed Plan → Sales Order → Delivery / Service → Sales Invoice → Payment Collection → Receivables
       </p>
       <div class="workflow-steps">
         @for (step of steps; track step; let last = $last) {

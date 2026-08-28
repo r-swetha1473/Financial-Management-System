@@ -55,6 +55,17 @@ export class ApiClientService {
     );
   }
 
+  postForm<T>(path: string, body: FormData): Observable<T> {
+    return this.http.post<ApiResponse<T>>(`${this.baseUrl}${path}`, body).pipe(
+      map((response) => keysToCamel(response.data) as T),
+      catchError(this.handleError),
+    );
+  }
+
+  getBlob(path: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}${path}`, { responseType: 'blob' }).pipe(catchError(this.handleError));
+  }
+
   patch<T>(path: string, body: unknown = {}): Observable<T> {
     return this.http.patch<ApiResponse<T>>(`${this.baseUrl}${path}`, body).pipe(
       map((response) => keysToCamel(response.data) as T),

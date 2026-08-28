@@ -33,8 +33,12 @@ async def list_vendors(
     tenant_id: UUID,
     page: int,
     page_size: int,
+    status: str | None = None,
+    search: str | None = None,
 ) -> tuple[list[VendorOut], int]:
-    rows, total = await VendorRepository(session, tenant_id).list_page(page, page_size)
+    rows, total = await VendorRepository(session, tenant_id).list_page(
+        page, page_size, status=status, search=search
+    )
     return [_to_out(row) for row in rows], total
 
 

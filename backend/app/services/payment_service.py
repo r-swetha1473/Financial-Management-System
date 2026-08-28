@@ -61,8 +61,9 @@ async def list_payments(
     tenant_id: UUID,
     page: int,
     page_size: int,
+    search: str | None = None,
 ) -> tuple[list[PaymentOut], int]:
-    rows, total = await PaymentRepository(session, tenant_id).list_page(page, page_size)
+    rows, total = await PaymentRepository(session, tenant_id).list_page(page, page_size, search=search)
     return [
         _to_out(payment, invoice_number, vendor_id, vendor_name)
         for payment, invoice_number, vendor_id, vendor_name in rows

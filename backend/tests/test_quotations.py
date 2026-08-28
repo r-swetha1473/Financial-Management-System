@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 from datetime import date
+from decimal import Decimal
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -17,10 +18,12 @@ from app.main import app
 from app.models.customer import Customer
 from app.models.organization import Organization
 from app.models.quotation import Quotation
+from app.models.sales_order import SalesOrder
 from app.models.user import User, UserSession
 
 QUOTATIONS_URL = "/api/v1/o2c/quotations"
 CUSTOMERS_URL = "/api/v1/o2c/customers"
+SALES_ORDERS_URL = "/api/v1/o2c/sales-orders"
 LOGIN_URL = "/api/v1/auth/login"
 TEST_MARKER = "o2c-quote-test-"
 ORG_B_PASSWORD = "isoadmin123"
@@ -98,8 +101,10 @@ class QuotationApiTests(unittest.TestCase):
     async def _cleanup(cls) -> None:
         async def work(session: AsyncSession):
             if cls.created_quote_ids:
+                await session.execute(delete(SalesOrder).where(SalesOrder.quotation_id.in_(cls.created_quote_ids)))
                 await session.execute(delete(Quotation).where(Quotation.id.in_(cls.created_quote_ids)))
             if cls.org_b_id is not None:
+                await session.execute(delete(SalesOrder).where(SalesOrder.organization_id == cls.org_b_id))
                 await session.execute(delete(Quotation).where(Quotation.organization_id == cls.org_b_id))
             if cls.created_customer_ids:
                 await session.execute(delete(Customer).where(Customer.id.in_(cls.created_customer_ids)))
@@ -140,7 +145,7 @@ class QuotationApiTests(unittest.TestCase):
 
     def _assert_quote_number(self, value: str, year: int | None = None) -> None:
         year = year or date.today().year
-        self.assertRegex(value, rf"^Q-{year}-\d{{3}}$")
+        self.assertRegex(value, rf"^Q-{year}-\d{{3,}}$")
 
     def test_operator_create_and_list_assigns_unique_sequence_numbers(self) -> None:
         admin = self._login("admin@demo-business.com", "admin123")
@@ -168,6 +173,9 @@ class QuotationApiTests(unittest.TestCase):
         self.assertEqual(a["customerId"], customer_id)
         self.assertEqual(a["status"], "draft")
         self.assertEqual(a.get("totalAmount") or a.get("total_amount"), "1500.5000")
+        self.assertIsNone(a.get("planDuration") if "planDuration" in a else a.get("plan_duration"))
+        self.assertIsNone(a.get("billingCycle") if "billingCycle" in a else a.get("billing_cycle"))
+        self.assertEqual(Decimal(str(a.get("depositAmount") or a.get("deposit_amount") or "0")), Decimal("0"))
 
         second = self.client.post(
             QUOTATIONS_URL,
@@ -256,6 +264,194 @@ class QuotationApiTests(unittest.TestCase):
         self.created_quote_ids.append(spoofed["id"])
         self.assertEqual(spoofed["organizationId"], str(self.org_b_id))
         self._assert_quote_number(spoofed.get("quoteNumber") or spoofed.get("quote_number"))
+
+    def test_list_filters_by_customer_and_status(self) -> None:
+        admin = self._login("admin@demo-business.com", "admin123")
+        customer_a = self._create_customer(admin)
+        customer_b = self._create_customer(admin)
+        token = self._login("operator@demo-business.com", "operator123")
+
+        draft_a = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(token),
+            json={"customerId": customer_a, "status": "draft", "totalAmount": "10.00"},
+        )
+        sent_a = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(token),
+            json={"customerId": customer_a, "status": "sent", "totalAmount": "20.00"},
+        )
+        draft_b = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(token),
+            json={"customerId": customer_b, "status": "draft", "totalAmount": "30.00"},
+        )
+        self.assertEqual(draft_a.status_code, 201, draft_a.text)
+        self.assertEqual(sent_a.status_code, 201, sent_a.text)
+        self.assertEqual(draft_b.status_code, 201, draft_b.text)
+        id_draft_a = draft_a.json()["data"]["id"]
+        id_sent_a = sent_a.json()["data"]["id"]
+        id_draft_b = draft_b.json()["data"]["id"]
+        self.created_quote_ids.extend([id_draft_a, id_sent_a, id_draft_b])
+
+        filtered = self.client.get(
+            f"{QUOTATIONS_URL}?page=1&page_size=20&customer_id={customer_a}&status=draft",
+            headers=self._auth(token),
+        )
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        body = filtered.json()
+        ids = [item["id"] for item in body["data"]]
+        self.assertEqual(ids, [id_draft_a])
+        self.assertEqual(body["meta"].get("total"), 1)
+        self.assertNotIn(id_sent_a, ids)
+        self.assertNotIn(id_draft_b, ids)
+
+    def test_list_filters_stay_tenant_scoped(self) -> None:
+        token_a = self._login("admin@demo-business.com", "admin123")
+        customer_a = self._create_customer(token_a)
+        create_a = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(token_a),
+            json={"customerId": customer_a, "status": "draft", "totalAmount": "11.00"},
+        )
+        self.assertEqual(create_a.status_code, 201, create_a.text)
+        quote_a = create_a.json()["data"]["id"]
+        self.created_quote_ids.append(quote_a)
+
+        token_b = self._login(self.org_b_email, ORG_B_PASSWORD)
+        customer_b = self._create_customer(token_b)
+        create_b = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(token_b),
+            json={"customerId": customer_b, "status": "draft", "totalAmount": "22.00"},
+        )
+        self.assertEqual(create_b.status_code, 201, create_b.text)
+        quote_b = create_b.json()["data"]["id"]
+        self.created_quote_ids.append(quote_b)
+
+        stolen = self.client.get(
+            f"{QUOTATIONS_URL}?page=1&page_size=20&customer_id={customer_a}&status=draft",
+            headers=self._auth(token_b),
+        )
+        self.assertEqual(stolen.status_code, 200, stolen.text)
+        stolen_ids = [item["id"] for item in stolen.json()["data"]]
+        self.assertNotIn(quote_a, stolen_ids)
+
+        own = self.client.get(
+            f"{QUOTATIONS_URL}?page=1&page_size=20&customer_id={customer_b}&status=draft",
+            headers=self._auth(token_b),
+        )
+        self.assertEqual(own.status_code, 200, own.text)
+        own_ids = [item["id"] for item in own.json()["data"]]
+        self.assertEqual(own_ids, [quote_b])
+        self.assertNotIn(quote_a, own_ids)
+
+    def test_create_persists_plan_duration_billing_cycle_and_deposit(self) -> None:
+        admin = self._login("admin@demo-business.com", "admin123")
+        customer_id = self._create_customer(admin)
+        token = self._login("operator@demo-business.com", "operator123")
+        create = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(token),
+            json={
+                "customerId": customer_id,
+                "totalAmount": "4500.00",
+                "planDuration": 90,
+                "billingCycle": "monthly",
+                "depositAmount": "15000.00",
+                "status": "accepted",
+            },
+        )
+        self.assertEqual(create.status_code, 201, create.text)
+        created = create.json()["data"]
+        self.created_quote_ids.append(created["id"])
+        self.assertEqual(created.get("planDuration") or created.get("plan_duration"), 90)
+        self.assertEqual(created.get("billingCycle") or created.get("billing_cycle"), "monthly")
+        self.assertEqual(Decimal(str(created.get("depositAmount") or created.get("deposit_amount"))), Decimal("15000.0000"))
+        self.assertEqual(created.get("totalAmount") or created.get("total_amount"), "4500.0000")
+
+        fetched = self.client.get(f"{QUOTATIONS_URL}/{created['id']}", headers=self._auth(token))
+        self.assertEqual(fetched.status_code, 200, fetched.text)
+        data = fetched.json()["data"]
+        self.assertEqual(data.get("planDuration") or data.get("plan_duration"), 90)
+        self.assertEqual(data.get("billingCycle") or data.get("billing_cycle"), "monthly")
+        self.assertEqual(Decimal(str(data.get("depositAmount") or data.get("deposit_amount"))), Decimal("15000.0000"))
+
+    def test_finance_can_accept_draft_plan_then_convert_to_sales_order(self) -> None:
+        admin = self._login("admin@demo-business.com", "admin123")
+        operator = self._login("operator@demo-business.com", "operator123")
+        finance = self._login("finance@demo-business.com", "finance123")
+        viewer = self._login("viewer@demo-business.com", "viewer123")
+        customer_id = self._create_customer(admin)
+
+        created = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(operator),
+            json={"customerId": customer_id, "totalAmount": "800.00", "status": "draft"},
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        quote_id = created.json()["data"]["id"]
+        self.created_quote_ids.append(quote_id)
+
+        blocked_so = self.client.post(
+            SALES_ORDERS_URL,
+            headers=self._auth(operator),
+            json={"quotationId": quote_id, "customerId": customer_id, "totalAmount": "800.00"},
+        )
+        self.assertEqual(blocked_so.status_code, 400, blocked_so.text)
+
+        operator_accept = self.client.patch(f"{QUOTATIONS_URL}/{quote_id}/accept", headers=self._auth(operator))
+        self.assertEqual(operator_accept.status_code, 403, operator_accept.text)
+        viewer_accept = self.client.patch(f"{QUOTATIONS_URL}/{quote_id}/accept", headers=self._auth(viewer))
+        self.assertEqual(viewer_accept.status_code, 403, viewer_accept.text)
+
+        accepted = self.client.patch(f"{QUOTATIONS_URL}/{quote_id}/accept", headers=self._auth(finance))
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertEqual(accepted.json()["data"]["status"], "accepted")
+
+        again = self.client.patch(f"{QUOTATIONS_URL}/{quote_id}/accept", headers=self._auth(finance))
+        self.assertEqual(again.status_code, 400, again.text)
+
+        sent = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(operator),
+            json={"customerId": customer_id, "status": "sent"},
+        )
+        self.assertEqual(sent.status_code, 201, sent.text)
+        sent_id = sent.json()["data"]["id"]
+        self.created_quote_ids.append(sent_id)
+        wrong_status = self.client.patch(f"{QUOTATIONS_URL}/{sent_id}/accept", headers=self._auth(finance))
+        self.assertEqual(wrong_status.status_code, 400, wrong_status.text)
+
+        reject_me = self.client.post(
+            QUOTATIONS_URL,
+            headers=self._auth(operator),
+            json={"customerId": customer_id, "status": "draft"},
+        )
+        self.assertEqual(reject_me.status_code, 201, reject_me.text)
+        reject_id = reject_me.json()["data"]["id"]
+        self.created_quote_ids.append(reject_id)
+        rejected = self.client.patch(f"{QUOTATIONS_URL}/{reject_id}/reject", headers=self._auth(finance))
+        self.assertEqual(rejected.status_code, 200, rejected.text)
+        self.assertEqual(rejected.json()["data"]["status"], "rejected")
+
+        so = self.client.post(
+            SALES_ORDERS_URL,
+            headers=self._auth(operator),
+            json={"quotationId": quote_id, "customerId": customer_id, "totalAmount": "800.00"},
+        )
+        self.assertEqual(so.status_code, 201, so.text)
+        self.assertEqual(so.json()["data"]["quotationId"], quote_id)
+
+        missing = self.client.patch(
+            f"{QUOTATIONS_URL}/00000000-0000-0000-0000-000000000099/accept",
+            headers=self._auth(finance),
+        )
+        self.assertEqual(missing.status_code, 404, missing.text)
+
+        token_b = self._login(self.org_b_email, ORG_B_PASSWORD)
+        stolen = self.client.patch(f"{QUOTATIONS_URL}/{quote_id}/accept", headers=self._auth(token_b))
+        self.assertEqual(stolen.status_code, 404, stolen.text)
 
 
 if __name__ == "__main__":

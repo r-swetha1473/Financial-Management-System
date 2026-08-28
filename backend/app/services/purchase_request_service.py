@@ -38,8 +38,13 @@ async def list_purchase_requests(
     tenant_id: UUID,
     page: int,
     page_size: int,
+    vendor_id: UUID | None = None,
+    status: str | None = None,
+    search: str | None = None,
 ) -> tuple[list[PurchaseRequestOut], int]:
-    rows, total = await PurchaseRequestRepository(session, tenant_id).list_page(page, page_size)
+    rows, total = await PurchaseRequestRepository(session, tenant_id).list_page(
+        page, page_size, vendor_id=vendor_id, status=status, search=search
+    )
     return [_to_out(request, vendor_name, requested_by_name) for request, vendor_name, requested_by_name in rows], total
 
 

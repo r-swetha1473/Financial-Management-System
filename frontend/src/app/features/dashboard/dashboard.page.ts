@@ -7,6 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { forkJoin } from 'rxjs';
 
@@ -14,26 +15,32 @@ import { DashboardApiService } from '../../core/api/dashboard-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import {
   CashPositionItem,
-  DashboardCategoryBreakdown,
   DashboardPeriod,
   DashboardSummary,
   DashboardTrendPoint,
-  ProductFinancialSummary,
   RecentExpenseRow,
   RecentInvoiceRow,
   RecentReceiptRow,
 } from '../../core/models/dashboard.model';
-import { InrPipe } from '../../shared/pipes/inr.pipe';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { LoadingSkeletonComponent } from '../../shared/components/loading-skeleton/loading-skeleton.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { SummaryCardComponent } from '../../shared/components/summary-card/summary-card.component';
-import { LoadingSkeletonComponent } from '../../shared/components/loading-skeleton/loading-skeleton.component';
+import { InrPipe } from '../../shared/pipes/inr.pipe';
 
 Chart.register(...registerables);
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
-  imports: [InrPipe, StatusBadgeComponent, SummaryCardComponent, LoadingSkeletonComponent],
+  imports: [
+    RouterLink,
+    InrPipe,
+    SummaryCardComponent,
+    LoadingSkeletonComponent,
+    EmptyStateComponent,
+    StatusBadgeComponent,
+  ],
   templateUrl: './dashboard.page.html',
 })
 export class DashboardPage implements AfterViewInit, OnDestroy {
@@ -41,7 +48,6 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
   private readonly auth = inject(AuthService);
 
   @ViewChild('trendCanvas') trendCanvas?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('categoryCanvas') categoryCanvas?: ElementRef<HTMLCanvasElement>;
 
   readonly periods: DashboardPeriod[] = ['daily', 'weekly', 'monthly'];
   readonly loading = signal(true);
@@ -51,15 +57,12 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
 
   summary: DashboardSummary | null = null;
   trend: DashboardTrendPoint[] = [];
-  categories: DashboardCategoryBreakdown[] = [];
+  cashPosition: CashPositionItem[] = [];
   expenses: RecentExpenseRow[] = [];
   invoices: RecentInvoiceRow[] = [];
   receipts: RecentReceiptRow[] = [];
-  cashPosition: CashPositionItem[] = [];
-  products: ProductFinancialSummary[] = [];
 
   private trendChart?: Chart;
-  private categoryChart?: Chart;
   private viewReady = false;
 
   ngAfterViewInit(): void {
@@ -69,7 +72,6 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.trendChart?.destroy();
-    this.categoryChart?.destroy();
   }
 
   setPeriod(period: DashboardPeriod): void {
@@ -86,24 +88,20 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
     forkJoin({
       summary: this.api.getSummary(),
       trend: this.api.getTrend(this.period()),
-      categories: this.api.getExpenseCategories(),
+      cashPosition: this.api.getCashPosition(),
       expenses: this.api.getRecentExpenses(),
       invoices: this.api.getRecentInvoices(),
       receipts: this.api.getRecentReceipts(),
-      cashPosition: this.api.getCashPosition(),
-      products: this.api.getProductSummaries(),
     }).subscribe({
       next: (data) => {
         this.summary = data.summary;
         this.trend = data.trend;
-        this.categories = data.categories;
+        this.cashPosition = data.cashPosition;
         this.expenses = data.expenses;
         this.invoices = data.invoices;
         this.receipts = data.receipts;
-        this.cashPosition = data.cashPosition;
-        this.products = data.products;
         this.loading.set(false);
-        setTimeout(() => this.renderCharts());
+        setTimeout(() => this.renderTrendChart());
       },
       error: () => {
         this.loading.set(false);
@@ -112,16 +110,8 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
     });
   }
 
-  private renderCharts(): void {
-    if (!this.viewReady) {
-      return;
-    }
-    this.renderTrendChart();
-    this.renderCategoryChart();
-  }
-
   private renderTrendChart(): void {
-    if (!this.trendCanvas) {
+    if (!this.viewReady || !this.trendCanvas) {
       return;
     }
     this.trendChart?.destroy();
@@ -152,29 +142,5 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
       },
     };
     this.trendChart = new Chart(this.trendCanvas.nativeElement, config);
-  }
-
-  private renderCategoryChart(): void {
-    if (!this.categoryCanvas) {
-      return;
-    }
-    this.categoryChart?.destroy();
-    this.categoryChart = new Chart(this.categoryCanvas.nativeElement, {
-      type: 'doughnut',
-      data: {
-        labels: this.categories.map((item) => item.category),
-        datasets: [
-          {
-            data: this.categories.map((item) => Number(item.amount)),
-            backgroundColor: ['#0d9488', '#2563eb', '#d97706', '#7c3aed', '#64748b'],
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
-      },
-    });
   }
 }

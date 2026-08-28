@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { FilterBarComponent, FilterBarState } from '../../shared/components/filter-bar/filter-bar.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 interface ReportCard {
@@ -12,25 +13,32 @@ interface ReportCard {
 @Component({
   selector: 'app-reports-page',
   standalone: true,
-  imports: [RouterLink, PageHeaderComponent],
+  imports: [RouterLink, PageHeaderComponent, FilterBarComponent],
   templateUrl: './reports.page.html',
 })
 export class ReportsPage {
+  search = '';
   readonly reports: ReportCard[] = [
-    { title: 'P2P Report', description: 'Purchase requests through payables.', route: '/reports/p2p' },
-    { title: 'O2C Report', description: 'Quotations through collections.', route: '/reports/o2c' },
-    { title: 'Expense Report', description: 'Operating and procurement spend.', route: '/reports/expenses' },
-    { title: 'Income / Sales Report', description: 'Sales invoices and collections.', route: '/reports/income' },
+    { title: 'Purchase', description: 'Purchase orders and supplier invoices.', route: '/reports/p2p' },
+    { title: 'Sales', description: 'Subscribed plans and sales invoices.', route: '/reports/o2c' },
     { title: 'Payables', description: 'Outstanding supplier balances.', route: '/reports/payables' },
     { title: 'Receivables', description: 'Outstanding customer balances.', route: '/reports/receivables' },
-    { title: 'GST Summary', description: 'Input, output, CGST, SGST, IGST.', route: '/reports/gst' },
-    { title: 'Cash Flow', description: 'Bank and cash movement.', route: '/reports/cash-flow' },
-    { title: 'Financial Summary', description: 'Organization-level performance.', route: '/reports/financial-summary' },
-    { title: 'Audit Report', description: 'Organization change history.', route: '/reports/audit' },
-    { title: 'Vendor Expense Report', description: 'Spend by supplier.', route: '/reports/vendor-expense' },
-    { title: 'Customer Income Report', description: 'Revenue by customer.', route: '/reports/customer-income' },
-    { title: 'Product Financial Summary', description: 'Income and cost by product.', route: '/reports/product-summary' },
-    { title: 'Invoice Report', description: 'Sales invoice status and GST.', route: '/reports/invoices' },
-    { title: 'Receipt Report', description: 'Collections by mode and date.', route: '/reports/receipts' },
+    { title: 'Cash Flow', description: 'Cash-basis inflows and outflows.', route: '/reports/cash-flow' },
+    { title: 'GST Summary', description: 'Stored gst_amount, no tax engine.', route: '/reports/gst' },
+    { title: 'P&L (cash-basis)', description: 'Same formula as dashboard net cash.', route: '/reports/financial-summary' },
   ];
+
+  get visibleReports(): ReportCard[] {
+    const query = this.search.trim().toLowerCase();
+    if (!query) {
+      return this.reports;
+    }
+    return this.reports.filter(
+      (report) => report.title.toLowerCase().includes(query) || report.description.toLowerCase().includes(query),
+    );
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+  }
 }

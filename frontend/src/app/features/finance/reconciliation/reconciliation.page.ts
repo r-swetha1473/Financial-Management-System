@@ -4,14 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
-import { addMoney } from '../../../core/utils/money.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
-import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { InrPipe } from '../../../shared/pipes/inr.pipe';
 import { FinanceBannerComponent } from '../components/finance-banner.component';
-import { FinanceAccount, FinanceTransaction } from '../models/finance.model';
 import { FinanceApiService } from '../services/finance-api.service';
 
 @Component({
@@ -21,10 +17,8 @@ import { FinanceApiService } from '../services/finance-api.service';
     FormsModule,
     PageHeaderComponent,
     FinanceBannerComponent,
-    StatusBadgeComponent,
     EmptyStateComponent,
     LoadingSkeletonComponent,
-    InrPipe,
   ],
   templateUrl: './reconciliation.page.html',
 })
@@ -34,44 +28,41 @@ export class ReconciliationPage implements OnInit {
   private readonly auth = inject(AuthService);
   readonly canEdit = computed(() => hasPermission(this.auth.session()?.role, 'edit'));
   readonly loading = signal(true);
-  accounts: FinanceAccount[] = [];
-  items: FinanceTransaction[] = [];
-  accountId = '';
+  readonly saving = signal(false);
+  readonly error = signal('');
+  note = '';
+  updatedAt: string | null = null;
 
   ngOnInit(): void {
-    this.api.listAccounts({ pageSize: 100 }).subscribe((result) => {
-      this.accounts = result.items;
-      this.accountId = this.accounts[0]?.id ?? '';
-      this.load();
+    this.api.getReconciliationNote().subscribe({
+      next: (row) => {
+        this.note = row.note ?? '';
+        this.updatedAt = row.updatedAt;
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set('Unable to load reconciliation notes.');
+      },
     });
   }
 
-  load(): void {
-    this.loading.set(true);
-    this.api.listTransactions({ pageSize: 100, accountId: this.accountId }).subscribe((result) => {
-      this.items = result.items;
-      this.loading.set(false);
-    });
-  }
-
-  selected(): FinanceAccount | undefined {
-    return this.accounts.find((row) => row.id === this.accountId);
-  }
-
-  unmatchedTotal(): string {
-    return this.items.filter((row) => !row.reconciled).reduce((sum, row) => addMoney(sum, row.amount), '0.00');
-  }
-
-  toggle(row: FinanceTransaction): void {
+  save(): void {
     if (!this.canEdit()) {
       return;
     }
-    this.api.setReconciled(row.id, !row.reconciled).subscribe({
-      next: () => {
-        this.toast.success(row.reconciled ? 'Marked unreconciled' : 'Marked reconciled');
-        this.load();
+    this.saving.set(true);
+    this.api.saveReconciliationNote(this.note).subscribe({
+      next: (row) => {
+        this.saving.set(false);
+        this.note = row.note;
+        this.updatedAt = row.updatedAt;
+        this.toast.success('Note saved');
       },
-      error: (err) => this.toast.error('Update failed', err.message),
+      error: (err) => {
+        this.saving.set(false);
+        this.toast.error('Save failed', err.message);
+      },
     });
   }
 }

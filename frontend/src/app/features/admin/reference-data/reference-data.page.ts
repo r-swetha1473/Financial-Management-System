@@ -5,6 +5,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { canMaintainReference } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -20,6 +21,7 @@ import { AdminApiService } from '../services/admin-api.service';
     FormsModule,
     ReactiveFormsModule,
     PageHeaderComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -68,7 +70,30 @@ export class ReferenceDataPage implements OnInit {
         this.loading.set(false);
         this.error.set('Unable to load reference data.');
       },
-    });
+      });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All statuses',
+        value: this.status,
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.dataType = '';
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {
@@ -77,10 +102,8 @@ export class ReferenceDataPage implements OnInit {
     this.modalOpen.set(true);
   }
 
-  openEdit(row: ReferenceDatum): void {
-    this.editing = row;
-    this.form.reset({ dataType: row.dataType, code: row.code, label: row.label, isActive: row.isActive });
-    this.modalOpen.set(true);
+  openEdit(_row: ReferenceDatum): void {
+    this.toast.error('Updating reference data is not supported by the API yet.');
   }
 
   save(): void {

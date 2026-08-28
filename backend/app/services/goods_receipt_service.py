@@ -40,8 +40,12 @@ async def list_goods_receipts(
     tenant_id: UUID,
     page: int,
     page_size: int,
+    status: str | None = None,
+    search: str | None = None,
 ) -> tuple[list[GoodsReceiptOut], int]:
-    rows, total = await GoodsReceiptRepository(session, tenant_id).list_page(page, page_size)
+    rows, total = await GoodsReceiptRepository(session, tenant_id).list_page(
+        page, page_size, status=status, search=search
+    )
     return [
         _to_out(receipt, po_number, vendor_id, vendor_name)
         for receipt, po_number, vendor_id, vendor_name in rows

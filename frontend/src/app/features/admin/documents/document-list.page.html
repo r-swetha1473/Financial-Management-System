@@ -1,32 +1,34 @@
 <div class="page">
-  <app-page-header title="Documents" subtitle="File metadata for this organization. Object-storage keys are stored; files are not served as public URLs.">
+  <app-page-header title="Documents" subtitle="Files stored for this organization. Bytes stay on the server; there is no public URL.">
     @if (canEdit()) {
       <label class="btn btn--primary">
-        Add metadata
-        <input type="file" hidden (change)="onFile($event)" />
+        Upload file
+        <input type="file" hidden accept="image/png,image/jpeg,application/pdf" (change)="onFile($event)" />
       </label>
     }
   </app-page-header>
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search file or entity..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search file or entity..."
+    [search]="search"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
-  @else if (items.length === 0) { <div class="card"><app-empty-state title="No documents" message="Attach a file from expenses or add metadata here." /></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No documents" message="Upload a PNG, JPEG, or PDF (10 MB max)." /></div> }
   @else {
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>File</th><th>Entity</th><th>Size</th><th>Storage key</th><th>Uploaded by</th><th>Date</th></tr></thead>
+        <thead><tr><th>File</th><th>Entity</th><th>Size</th><th>Date</th><th class="col-actions">Actions</th></tr></thead>
         <tbody>
           @for (row of items; track row.id) {
             <tr>
               <td>{{ row.fileName }}</td>
-              <td>{{ row.entityName }} / {{ row.entityId }}</td>
+              <td>{{ row.entityName }}</td>
               <td>{{ row.fileSize }}</td>
-              <td class="text-mono">{{ row.storageKey }}</td>
-              <td>{{ row.uploadedBy }}</td>
               <td>{{ row.createdAt }}</td>
+              <td class="col-actions">
+                <button class="btn btn--ghost btn--sm" type="button" (click)="download(row)">Download</button>
+              </td>
             </tr>
           }
         </tbody>

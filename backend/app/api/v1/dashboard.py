@@ -1,4 +1,7 @@
-"""Dashboard API routes. Cash position and summary money fields are live org-scoped aggregates."""
+"""Dashboard API routes. Summary, cash position, recent tables, and the income/expense
+trend are live org-scoped. Product summary and category breakdown remain seed
+scaffolding and are not wired in the Angular dashboard.
+"""
 
 from typing import Annotated
 
@@ -18,7 +21,7 @@ from app.schemas.dashboard import (
     RecentInvoiceRow,
     RecentReceiptRow,
 )
-from app.services import cash_position_service, dev_seed
+from app.services import cash_position_service, dashboard_recent_service, dev_seed
 
 router = APIRouter(
     prefix="/dashboard",
@@ -37,15 +40,24 @@ async def dashboard_summary(
 
 
 @router.get("/expenses", response_model=ApiResponse[list[RecentExpenseRow]])
-async def dashboard_expenses() -> ApiResponse[list[RecentExpenseRow]]:
-    return ApiResponse(data=dev_seed.get_recent_expenses())
+async def dashboard_expenses(
+    current: Annotated[CurrentUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[RecentExpenseRow]]:
+    rows = await dashboard_recent_service.list_recent_expenses(session, current.tenant_id)
+    return ApiResponse(data=rows)
 
 
 @router.get("/income", response_model=ApiResponse[list[DashboardTrendPoint]])
 async def dashboard_income(
+    current: Annotated[CurrentUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
     period: str = Query(default="monthly", pattern="^(daily|weekly|monthly)$"),
 ) -> ApiResponse[list[DashboardTrendPoint]]:
-    return ApiResponse(data=dev_seed.get_income_expense_trend(period))
+    rows = await dashboard_recent_service.list_income_expense_trend(
+        session, current.tenant_id, period
+    )
+    return ApiResponse(data=rows)
 
 
 @router.get("/cash-position", response_model=ApiResponse[list[CashPositionItem]])
@@ -63,13 +75,21 @@ async def dashboard_categories() -> ApiResponse[list[DashboardCategoryBreakdown]
 
 
 @router.get("/invoices", response_model=ApiResponse[list[RecentInvoiceRow]])
-async def dashboard_invoices() -> ApiResponse[list[RecentInvoiceRow]]:
-    return ApiResponse(data=dev_seed.get_recent_invoices())
+async def dashboard_invoices(
+    current: Annotated[CurrentUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[RecentInvoiceRow]]:
+    rows = await dashboard_recent_service.list_recent_invoices(session, current.tenant_id)
+    return ApiResponse(data=rows)
 
 
 @router.get("/receipts", response_model=ApiResponse[list[RecentReceiptRow]])
-async def dashboard_receipts() -> ApiResponse[list[RecentReceiptRow]]:
-    return ApiResponse(data=dev_seed.get_recent_receipts())
+async def dashboard_receipts(
+    current: Annotated[CurrentUser, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[RecentReceiptRow]]:
+    rows = await dashboard_recent_service.list_recent_receipts(session, current.tenant_id)
+    return ApiResponse(data=rows)
 
 
 @router.get("/products", response_model=ApiResponse[list[ProductFinancialSummary]])

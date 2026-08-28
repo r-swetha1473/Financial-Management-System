@@ -1,8 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
@@ -16,10 +16,10 @@ import { O2cApiService } from '../services/o2c-api.service';
   selector: 'app-receivable-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     RouterLink,
     PageHeaderComponent,
     O2cBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     EmptyStateComponent,
@@ -60,5 +60,36 @@ export class ReceivableListPage implements OnInit {
           this.error.set('Unable to load receivables.');
         },
       });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'customer',
+        label: 'Customer',
+        blankLabel: 'All customers',
+        value: this.customerId,
+        options: this.customers.map((customer) => ({ value: customer.id, label: customer.name })),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All statuses',
+        value: this.status,
+        options: [
+          { value: 'open', label: 'Open' },
+          { value: 'partial', label: 'Partial' },
+          { value: 'closed', label: 'Closed' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.customerId = state.values['customer'] ?? '';
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 }

@@ -4,16 +4,12 @@
       <button class="btn btn--primary" type="button" (click)="openCreate()">Add lookup</button>
     }
   </app-page-header>
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search type, code, or label..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <input class="form-input" placeholder="Filter type" [(ngModel)]="dataType" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search type, code, or label..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No lookups" message="Add a data type and code for this organization." /></div> }

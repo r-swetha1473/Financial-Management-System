@@ -6,7 +6,6 @@ import { environment } from '../../../environments/environment';
 import { ApiClientService } from './api-client.service';
 import {
   CashPositionItem,
-  DashboardCategoryBreakdown,
   DashboardPeriod,
   DashboardSummary,
   DashboardTrendPoint,
@@ -29,13 +28,6 @@ export class DashboardApiService {
     return this.withFallback(
       this.api.get<DashboardTrendPoint[]>('/dashboard/income', { period }),
       DASHBOARD_SEED.trend(period),
-    );
-  }
-
-  getExpenseCategories(): Observable<DashboardCategoryBreakdown[]> {
-    return this.withFallback(
-      this.api.get<DashboardCategoryBreakdown[]>('/dashboard/categories'),
-      DASHBOARD_SEED.categories,
     );
   }
 

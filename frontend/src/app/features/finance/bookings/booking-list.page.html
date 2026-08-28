@@ -3,14 +3,12 @@
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New booking</button> }
   </app-page-header>
   <app-existing-sales-banner currentStep="Booking" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search offering or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
-      <option value="">All customers</option>
-      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search offering or customer..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No bookings" message="Create a booking for a customer offering." /></div> }
@@ -50,7 +48,7 @@
         </select>
       </div>
       <div class="form-field">
-        <label class="form-field__label">Customer</label>
+        <label class="form-field__label">Customer<span class="form-field__required">*</span></label>
         <select class="form-select" formControlName="customerId">
           <option value="">Select customer</option>
           @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }

@@ -1,5 +1,7 @@
 <div class="page">
-  @if (!model) {
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (!model) {
     <app-empty-state title="Report not found" message="This report is not configured." />
   } @else {
     <app-page-header [title]="model.title" [subtitle]="model.subtitle">

@@ -13,12 +13,6 @@ export interface DashboardTrendPoint {
   expenses: string;
 }
 
-export interface DashboardCategoryBreakdown {
-  category: string;
-  amount: string;
-  percentage: string;
-}
-
 export interface RecentExpenseRow {
   id: string;
   vendor: string;

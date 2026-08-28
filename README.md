@@ -46,15 +46,8 @@ Demo login (development tenant only):
 - Email: `admin@demo-business.com`
 - Password: `admin123`
 
-If the API is not running, the frontend still signs in using the same contract via a development fallback (`environment.useDevSeed`).
+If the API is not running, the frontend still signs in using the same contract via a development fallback (`environment.useDevSeed`). Keep that flag `false` for real tenant data.
 
-## Phase 1 scope
+## Current scope
 
-- Design system and application shell
-- Authentication (JWT-ready)
-- Dashboard
-- Organization context in session
-- First-class P2P and O2C navigation
-- FastAPI skeleton + PostgreSQL schema foundation
-
-Operational CRUD for P2P/O2C/finance follows in Phases 2–5.
+Org-scoped P2P (vendor → PR → PO → GRN → supplier invoice → payment / payable), O2C (customer → subscribed plan → SO → delivery → sales invoice → collection / receivable), expenses, legacy bookings/invoices/receipts, catalog, reports, documents, and admin users. Create, list, approve, and pay are live; record updates are out of scope (UI shows unsupported). Dashboard summary cards and cash position are live aggregates; the recent-expense/invoice/receipt and product-summary tables are still seed. See `docs/DECISIONS.md` for the rest of the operating limits.

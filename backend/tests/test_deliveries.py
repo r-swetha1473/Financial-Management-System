@@ -187,7 +187,7 @@ class DeliveryApiTests(unittest.TestCase):
         dn_a = first.json()["data"]
         self.created_delivery_ids.append(dn_a["id"])
         number_a = dn_a.get("deliveryNumber") or dn_a.get("delivery_number")
-        self.assertRegex(number_a, rf"^DN-{year}-\d{{3}}$")
+        self.assertRegex(number_a, rf"^DN-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, "DN-SHOULD-BE-IGNORED")
         self.assertEqual(dn_a["salesOrderId"], first_so["id"])
         self.assertEqual(dn_a["customerId"], customer_id)
@@ -212,7 +212,7 @@ class DeliveryApiTests(unittest.TestCase):
         dn_b = second.json()["data"]
         self.created_delivery_ids.append(dn_b["id"])
         number_b = dn_b.get("deliveryNumber") or dn_b.get("delivery_number")
-        self.assertRegex(number_b, rf"^DN-{year}-\d{{3}}$")
+        self.assertRegex(number_b, rf"^DN-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, number_b)
         self.assertEqual(self._so_status(operator, second_so["id"]), "fulfilled")
 

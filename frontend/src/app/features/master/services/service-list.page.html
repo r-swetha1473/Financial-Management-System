@@ -2,10 +2,11 @@
   <app-page-header title="Services" subtitle="Service offerings used by bookings. Catalog prices are not recognized income.">
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Add offering</button> }
   </app-page-header>
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search offering or product..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search offering or product..."
+    [search]="search"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No offerings" message="Add a service offering for bookings." /></div> }

@@ -3,10 +3,11 @@
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Record receipt</button> }
   </app-page-header>
   <app-existing-sales-banner currentStep="Receipt" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search invoice or mode..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search invoice or mode..."
+    [search]="search"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No receipts" message="Record a receipt against an existing invoice." /></div> }

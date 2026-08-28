@@ -1,11 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, of, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
 
-import { environment } from '../../../../environments/environment';
 import { ApiClientService, ApiError } from '../../../core/api/api-client.service';
-import { AuthService } from '../../../core/auth/auth.service';
-import { DEMO_ORGANIZATION_ID } from '../../../core/seed/ids';
 import { subtractMoney } from '../../../core/utils/money.util';
 import {
   Booking,
@@ -29,7 +25,6 @@ import { O2cStore } from './o2c.store';
 export class O2cApiService {
   private readonly api = inject(ApiClientService);
   private readonly store = inject(O2cStore);
-  private readonly auth = inject(AuthService);
 
   listCustomers(query: O2cQuery = {}): Observable<PageResult<Customer>> {
     return this.api.getPaginated<Customer>('/o2c/customers', {
@@ -41,7 +36,9 @@ export class O2cApiService {
     return this.api.get<Customer>(`/o2c/customers/${id}`);
   }
   saveCustomer(
-    payload: Omit<Customer, 'id' | 'organizationId' | 'createdAt'> & { id?: string },
+    payload: Omit<Customer, 'id' | 'organizationId' | 'createdAt'> & {
+      id?: string;
+    },
   ): Observable<Customer> {
     if (payload.id) {
       return throwError(
@@ -58,6 +55,8 @@ export class O2cApiService {
       gstin: payload.gstin || null,
       state: payload.state || null,
       creditLimit: payload.creditLimit || null,
+      phone: payload.phone || null,
+      driversLicenseNumber: payload.driversLicenseNumber || null,
     });
   }
 
@@ -72,6 +71,9 @@ export class O2cApiService {
     return this.api.getPaginated<Quotation>('/o2c/quotations', {
       page: query.page ?? 1,
       page_size: query.pageSize ?? 20,
+      customer_id: query.customerId,
+      status: query.status,
+      search: query.search,
     });
   }
   getQuotation(id: string): Observable<Quotation | null> {
@@ -85,7 +87,7 @@ export class O2cApiService {
         () =>
           ({
             code: '501',
-            message: 'Updating a quotation is not supported by the API yet.',
+            message: 'Updating a subscribed plan is not supported by the API yet.',
           }) satisfies ApiError,
       );
     }
@@ -95,13 +97,27 @@ export class O2cApiService {
       validUntil: payload.validUntil || null,
       totalAmount: payload.totalAmount,
       status: payload.status,
+      planDuration: payload.planDuration,
+      billingCycle: payload.billingCycle,
+      depositAmount: payload.depositAmount,
     });
+  }
+
+  acceptQuotation(id: string): Observable<Quotation> {
+    return this.api.patch<Quotation>(`/o2c/quotations/${id}/accept`);
+  }
+
+  rejectQuotation(id: string): Observable<Quotation> {
+    return this.api.patch<Quotation>(`/o2c/quotations/${id}/reject`);
   }
 
   listSalesOrders(query: O2cQuery = {}): Observable<PageResult<SalesOrder>> {
     return this.api.getPaginated<SalesOrder>('/o2c/sales-orders', {
       page: query.page ?? 1,
       page_size: query.pageSize ?? 20,
+      customer_id: query.customerId,
+      status: query.status,
+      search: query.search,
     });
   }
   getSalesOrder(id: string): Observable<SalesOrder | null> {
@@ -237,156 +253,109 @@ export class O2cApiService {
   }
 
   listBookings(query: O2cQuery = {}): Observable<PageResult<Booking>> {
-    return this.list('/bookings', query, () =>
-      this.store.page(this.store.load().bookings, query, (item) => `${item.offeringName} ${item.customerName}`),
-    );
+    return this.api.getPaginated<Booking>('/bookings', {
+      page: query.page ?? 1,
+      page_size: query.pageSize ?? 20,
+      customer_id: query.customerId,
+    });
   }
   getBooking(id: string): Observable<Booking | null> {
-    return this.one(`/bookings/${id}`, () => this.store.load().bookings.find((row) => row.id === id) ?? null);
+    return this.api.get<Booking>(`/bookings/${id}`);
   }
   saveBooking(
     payload: Omit<Booking, 'id' | 'organizationId' | 'createdAt' | 'customerName' | 'offeringName'> & { id?: string },
   ): Observable<Booking> {
-    const state = this.store.load();
-    const existing = payload.id ? state.bookings.find((row) => row.id === payload.id) : undefined;
-    const record: Booking = {
-      ...payload,
-      id: payload.id ?? this.store.nextId('bk'),
-      organizationId: this.orgId(),
-      createdAt: existing?.createdAt ?? today(),
-      customerName: this.store.customerName(state, payload.customerId),
-      offeringName: state.offerings.find((row) => row.id === payload.offeringId)?.name ?? '',
-    };
-    return this.write('/bookings', record, !payload.id, () => this.store.upsertBooking(record));
+    if (payload.id) {
+      return throwError(
+        () =>
+          ({
+            code: '501',
+            message: 'Updating a booking is not supported by the API yet.',
+          }) satisfies ApiError,
+      );
+    }
+    if (!payload.customerId) {
+      return throwError(() => ({ code: '400', message: 'Customer is required.' } satisfies ApiError));
+    }
+    return this.api.post<Booking>('/bookings', {
+      offeringId: payload.offeringId || null,
+      customerId: payload.customerId,
+      bookingStartDate: payload.bookingStartDate,
+      bookingEndDate: payload.bookingEndDate || null,
+      securityPaid: payload.securityPaid,
+    });
   }
 
   listInvoices(query: O2cQuery = {}): Observable<PageResult<LegacyInvoice>> {
-    return this.list('/invoices', query, () =>
-      this.store.page(this.store.load().invoices, query, (item) => `${item.invoiceNumber} ${item.customerName}`),
-    );
+    return this.api.getPaginated<LegacyInvoice>('/invoices', {
+      page: query.page ?? 1,
+      page_size: query.pageSize ?? 20,
+      customer_id: query.customerId,
+    });
   }
   getInvoice(id: string): Observable<LegacyInvoice | null> {
-    return this.one(`/invoices/${id}`, () => this.store.load().invoices.find((row) => row.id === id) ?? null);
+    return this.api.get<LegacyInvoice>(`/invoices/${id}`);
   }
   saveInvoice(
     payload: Omit<
       LegacyInvoice,
-      'id' | 'organizationId' | 'createdAt' | 'customerName' | 'bookingLabel' | 'planName' | 'status'
+      'id' | 'organizationId' | 'createdAt' | 'customerName' | 'bookingLabel' | 'planName' | 'status' | 'paid' | 'outstanding'
     > & { id?: string },
   ): Observable<LegacyInvoice> {
-    const state = this.store.load();
-    const booking = state.bookings.find((row) => row.id === payload.bookingId);
-    const plan = state.plans.find((row) => row.id === payload.planId);
-    const existing = payload.id ? state.invoices.find((row) => row.id === payload.id) : undefined;
-    const record: LegacyInvoice = {
-      ...payload,
-      id: payload.id ?? this.store.nextId('inv'),
-      organizationId: this.orgId(),
-      createdAt: existing?.createdAt ?? today(),
-      customerName: this.store.customerName(state, payload.customerId),
-      bookingLabel: booking?.offeringName ?? '',
-      planName: plan?.name ?? '',
-      status: existing?.status ?? 'pending',
-    };
-    return this.write('/invoices', record, !payload.id, () => this.store.upsertLegacyInvoice(record));
+    if (payload.id) {
+      return throwError(
+        () =>
+          ({
+            code: '501',
+            message: 'Updating an invoice is not supported by the API yet.',
+          }) satisfies ApiError,
+      );
+    }
+    return this.api.post<LegacyInvoice>('/invoices', {
+      invoiceNumber: payload.invoiceNumber || null,
+      customerId: payload.customerId || null,
+      bookingId: payload.bookingId || null,
+      planId: null,
+      invoiceRaisedDate: payload.invoiceRaisedDate,
+      securityAmountDeposited: payload.securityAmountDeposited,
+      invoiceAmount: payload.invoiceAmount,
+      isGstInvoice: payload.isGstInvoice,
+      gstAmount: payload.gstAmount,
+    });
   }
 
   listReceipts(query: O2cQuery = {}): Observable<PageResult<InvoiceReceipt>> {
-    return this.list('/receipts', query, () => {
-      const state = this.store.load();
-      const invoiceIds = query.customerId
-        ? state.invoices.filter((row) => row.customerId === query.customerId).map((row) => row.id)
-        : null;
-      const items = invoiceIds ? state.receipts.filter((row) => invoiceIds.includes(row.invoiceId)) : state.receipts;
-      return this.store.page(items, { ...query, customerId: undefined }, (item) => `${item.invoiceNumber} ${item.paymentMode}`);
+    return this.api.getPaginated<InvoiceReceipt>('/receipts', {
+      page: query.page ?? 1,
+      page_size: query.pageSize ?? 20,
     });
   }
   getReceipt(id: string): Observable<InvoiceReceipt | null> {
-    return this.one(`/receipts/${id}`, () => this.store.load().receipts.find((row) => row.id === id) ?? null);
+    return this.api.get<InvoiceReceipt>(`/receipts/${id}`);
   }
   createReceipt(
     payload: Omit<InvoiceReceipt, 'id' | 'organizationId' | 'createdAt' | 'invoiceNumber' | 'pendingAmount' | 'enteredBy'> & {
       enteredBy?: string;
     },
   ): Observable<InvoiceReceipt> {
-    const invoice = this.store.load().invoices.find((row) => row.id === payload.invoiceId);
-    if (!invoice) {
-      return throwError(() => ({ code: '400', message: 'Invoice is required.' } satisfies ApiError));
-    }
     if (payload.paymentMode === 'UPI' && !/^\d{4}$/.test(payload.transactionLast4)) {
       return throwError(() => ({ code: '400', message: 'UPI receipts require exactly 4 digits.' } satisfies ApiError));
     }
-    const record: InvoiceReceipt = {
-      ...payload,
-      id: this.store.nextId('rcp'),
-      organizationId: this.orgId(),
-      createdAt: today(),
-      invoiceNumber: invoice.invoiceNumber,
-      pendingAmount: '0.00',
-      enteredBy: payload.enteredBy ?? this.auth.session()?.fullName ?? 'User',
-    };
-    return this.write('/receipts', record, true, () => this.store.addReceipt(record));
+    return this.api.post<InvoiceReceipt>('/receipts', {
+      invoiceId: payload.invoiceId,
+      receiptDate: payload.receiptDate,
+      receiptAmount: payload.receiptAmount,
+      paymentMode: payload.paymentMode,
+      transactionLast4: payload.paymentMode === 'UPI' ? payload.transactionLast4 : null,
+    });
   }
 
-  legacyInvoiceOutstanding(id: string) {
-    const state = this.store.load();
-    const invoice = state.invoices.find((row) => row.id === id);
+  legacyInvoiceOutstanding(invoice: Pick<LegacyInvoice, 'invoiceAmount' | 'paid' | 'outstanding'> | null) {
     if (!invoice) {
       return null;
     }
-    const paid = this.store.paidOnLegacyInvoice(state, id);
-    return {
-      invoiceAmount: invoice.invoiceAmount,
-      paid,
-      outstanding: subtractMoney(invoice.invoiceAmount, paid),
-    };
+    const outstanding = invoice.outstanding ?? invoice.invoiceAmount;
+    const paid = invoice.paid ?? subtractMoney(invoice.invoiceAmount, outstanding);
+    return { invoiceAmount: invoice.invoiceAmount, paid, outstanding };
   }
-
-  private orgId(): string {
-    return this.auth.session()?.organizationId ?? DEMO_ORGANIZATION_ID;
-  }
-
-  private list<T>(path: string, query: O2cQuery, fallback: () => PageResult<T>): Observable<PageResult<T>> {
-    return this.api
-      .get<T[]>(path, {
-        page: query.page,
-        pageSize: query.pageSize,
-        search: query.search,
-        status: query.status,
-        customerId: query.customerId,
-      })
-      .pipe(
-        map((data) => ({ items: data, total: data.length, page: query.page ?? 1, pageSize: query.pageSize ?? 10 })),
-        catchError((error: ApiError) => (environment.useDevSeed ? of(fallback()) : throwError(() => error))),
-      );
-  }
-
-  private one<T>(path: string, fallback: () => T): Observable<T> {
-    return this.api.get<T>(path).pipe(
-      catchError((error: ApiError) => (environment.useDevSeed ? of(fallback()) : throwError(() => error))),
-    );
-  }
-
-  private write<T extends { id: string }>(path: string, body: T, isNew: boolean, fallback: () => T): Observable<T> {
-    const request$ = isNew ? this.api.post<T>(path, body) : this.api.put<T>(`${path}/${body.id}`, body);
-    return request$.pipe(
-      catchError((error: ApiError) => {
-        if (!environment.useDevSeed) {
-          return throwError(() => error);
-        }
-        try {
-          return of(fallback());
-        } catch (storeError) {
-          return throwError(() => ({
-            code: '400',
-            message: storeError instanceof Error ? storeError.message : error.message,
-          } satisfies ApiError));
-        }
-      }),
-    );
-  }
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
 }

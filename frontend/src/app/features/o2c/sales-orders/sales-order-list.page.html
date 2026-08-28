@@ -1,29 +1,21 @@
 <div class="page">
-  <app-page-header title="Sales Orders" subtitle="Confirm customer orders. A quotation is optional; a customer is required.">
+  <app-page-header title="Sales Orders" subtitle="Confirm a customer order. A subscribed plan is optional; a customer is required.">
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New sales order</button> }
   </app-page-header>
   <app-o2c-banner currentStep="Sales Order" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search order or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
-      <option value="">All customers</option>
-      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
-    </select>
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="confirmed">Confirmed</option>
-      <option value="fulfilled">Fulfilled</option>
-      <option value="cancelled">Cancelled</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search order or customer..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
-  @else if (items.length === 0) { <div class="card"><app-empty-state title="No sales orders" message="Create a sales order from an accepted quotation or directly for a customer." /></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No sales orders" message="Create a sales order from an accepted subscribed plan or directly for a customer." /></div> }
   @else {
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>Order</th><th>Customer</th><th>Quotation</th><th>Date</th><th class="col-amount">Amount</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <thead><tr><th>Order</th><th>Customer</th><th>Plan</th><th>Date</th><th class="col-amount">Amount</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
         <tbody>
           @for (row of items; track row.id) {
             <tr>
@@ -58,7 +50,7 @@
         </select>
       </div>
       <div class="form-field">
-        <label class="form-field__label">Quotation</label>
+        <label class="form-field__label">Subscribed plan</label>
         <select class="form-select" formControlName="quotationId">
           <option value="">None</option>
           @for (quote of quotations; track quote.id) { <option [value]="quote.id">{{ quote.quoteNumber }} — {{ quote.customerName }}</option> }

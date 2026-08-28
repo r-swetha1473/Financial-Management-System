@@ -137,7 +137,7 @@ export interface AuditEntry {
 
 export interface IncomeRecord {
   id: string;
-  sourceType: 'invoice' | 'receipt' | 'sales_invoice' | 'collection';
+  sourceType: 'receipt' | 'collection';
   sourceId: string;
   sourceRoute: string;
   customerName: string;
@@ -146,6 +146,24 @@ export interface IncomeRecord {
   gstAmount: string;
   date: string;
   status: string;
+}
+
+export interface GstSummary {
+  inputGst: string;
+  outputGst: string;
+  net: string;
+  expenses: string;
+  supplier: string;
+  outputLegacy: string;
+  outputO2c: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+}
+
+export interface ReconciliationNote {
+  organizationId: string;
+  note: string;
+  updatedAt: string | null;
 }
 
 export interface FinanceState {

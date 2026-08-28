@@ -103,6 +103,10 @@ export class P2pApiService {
     });
   }
 
+  issuePurchaseOrder(id: string): Observable<PurchaseOrder> {
+    return this.api.patch<PurchaseOrder>(`/p2p/purchase-orders/${id}/issue`);
+  }
+
   listGoodsReceipts(query: P2pQuery = {}): Observable<PageResult<GoodsReceipt>> {
     return this.page('/p2p/goods-receipts', query);
   }
@@ -224,6 +228,9 @@ export class P2pApiService {
     return this.api.getPaginated<T>(path, {
       page: query.page ?? 1,
       page_size: query.pageSize ?? LIST_SIZE,
+      search: query.search,
+      status: query.status,
+      vendor_id: query.vendorId,
     });
   }
 

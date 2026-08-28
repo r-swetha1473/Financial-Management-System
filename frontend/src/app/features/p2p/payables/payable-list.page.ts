@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
@@ -20,6 +21,7 @@ import { P2pApiService } from '../services/p2p-api.service';
     RouterLink,
     PageHeaderComponent,
     P2pBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     EmptyStateComponent,
@@ -58,5 +60,36 @@ export class PayableListPage implements OnInit {
         this.error.set('Unable to load payables.');
       },
     });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'vendor',
+        label: 'Vendor',
+        blankLabel: 'All Vendors',
+        value: this.vendorId,
+        options: this.vendors.map((vendor) => ({ value: vendor.id, label: vendor.name })),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All Statuses',
+        value: this.status,
+        options: [
+          { value: 'open', label: 'Open' },
+          { value: 'partial', label: 'Partial' },
+          { value: 'closed', label: 'Closed' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.vendorId = state.values['vendor'] ?? '';
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 }

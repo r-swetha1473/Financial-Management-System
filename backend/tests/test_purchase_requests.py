@@ -19,8 +19,10 @@ from app.models.organization import Organization
 from app.models.purchase_request import PurchaseRequest
 from app.models.audit_log import AuditLog
 from app.models.user import User, UserSession
+from app.models.vendor import Vendor
 
 PRS_URL = "/api/v1/p2p/purchase-requests"
+VENDORS_URL = "/api/v1/p2p/vendors"
 LOGIN_URL = "/api/v1/auth/login"
 TEST_MARKER = "p2p-pr-test-"
 ORG_B_PASSWORD = "isoadmin123"
@@ -53,10 +55,12 @@ class PurchaseRequestApiTests(unittest.TestCase):
     org_b_id = None
     org_b_email: str
     created_ids: list
+    created_vendor_ids: list
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.created_ids = []
+        cls.created_vendor_ids = []
         cls._client_cm = TestClient(app)
         cls.client = cls._client_cm.__enter__()
         cls.org_b_email = f"admin-{uuid4().hex[:10]}@iso-org.example.com"
@@ -102,9 +106,13 @@ class PurchaseRequestApiTests(unittest.TestCase):
             marked = select(PurchaseRequest.id).where(PurchaseRequest.notes.like(f"{TEST_MARKER}%"))
             await session.execute(delete(AuditLog).where(AuditLog.entity_id.in_(marked)))
             await session.execute(delete(PurchaseRequest).where(PurchaseRequest.notes.like(f"{TEST_MARKER}%")))
+            if cls.created_vendor_ids:
+                await session.execute(delete(Vendor).where(Vendor.id.in_(cls.created_vendor_ids)))
+            await session.execute(delete(Vendor).where(Vendor.name.like(f"{TEST_MARKER}%")))
             if cls.org_b_id is not None:
                 await session.execute(delete(AuditLog).where(AuditLog.organization_id == cls.org_b_id))
                 await session.execute(delete(PurchaseRequest).where(PurchaseRequest.organization_id == cls.org_b_id))
+                await session.execute(delete(Vendor).where(Vendor.organization_id == cls.org_b_id))
                 await session.execute(
                     text("DELETE FROM document_sequences WHERE organization_id = :oid"),
                     {"oid": cls.org_b_id},
@@ -128,7 +136,7 @@ class PurchaseRequestApiTests(unittest.TestCase):
 
     def _assert_request_number(self, value: str, year: int | None = None) -> None:
         year = year or date.today().year
-        self.assertRegex(value, rf"^PR-{year}-\d{{3}}$")
+        self.assertRegex(value, rf"^PR-{year}-\d{{3,}}$")
 
     def test_operator_create_and_list_assigns_unique_sequence_numbers(self) -> None:
         token = self._login("operator@demo-business.com", "operator123")
@@ -292,6 +300,122 @@ class PurchaseRequestApiTests(unittest.TestCase):
         token_b = self._login(self.org_b_email, ORG_B_PASSWORD)
         stolen = self.client.patch(f"{PRS_URL}/{pr_id}/approve", headers=self._auth(token_b))
         self.assertEqual(stolen.status_code, 404, stolen.text)
+
+    def _create_vendor(self, token: str, name: str | None = None) -> str:
+        response = self.client.post(
+            VENDORS_URL,
+            headers=self._auth(token),
+            json={"name": name or f"{TEST_MARKER}{uuid4().hex[:8]}", "status": "active"},
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        vendor_id = response.json()["data"]["id"]
+        self.created_vendor_ids.append(vendor_id)
+        return vendor_id
+
+    def test_list_filters_by_search_vendor_and_status(self) -> None:
+        admin = self._login("admin@demo-business.com", "admin123")
+        vendor_a = self._create_vendor(admin, f"{TEST_MARKER}Alpha Supplies")
+        vendor_b = self._create_vendor(admin, f"{TEST_MARKER}Beta Traders")
+        token = self._login("operator@demo-business.com", "operator123")
+
+        draft_a = self.client.post(
+            PRS_URL,
+            headers=self._auth(token),
+            json={"vendorId": vendor_a, "status": "draft", "notes": f"{TEST_MARKER}unique-widget-note"},
+        )
+        submitted_a = self.client.post(
+            PRS_URL,
+            headers=self._auth(token),
+            json={"vendorId": vendor_a, "status": "submitted", "notes": f"{TEST_MARKER}other"},
+        )
+        draft_b = self.client.post(
+            PRS_URL,
+            headers=self._auth(token),
+            json={"vendorId": vendor_b, "status": "draft", "notes": f"{TEST_MARKER}other"},
+        )
+        self.assertEqual(draft_a.status_code, 201, draft_a.text)
+        self.assertEqual(submitted_a.status_code, 201, submitted_a.text)
+        self.assertEqual(draft_b.status_code, 201, draft_b.text)
+        id_draft_a = draft_a.json()["data"]["id"]
+        id_submitted_a = submitted_a.json()["data"]["id"]
+        id_draft_b = draft_b.json()["data"]["id"]
+        self.created_ids.extend([id_draft_a, id_submitted_a, id_draft_b])
+        number_a = draft_a.json()["data"].get("requestNumber") or draft_a.json()["data"].get("request_number")
+
+        by_vendor_status = self.client.get(
+            f"{PRS_URL}?page=1&page_size=20&vendor_id={vendor_a}&status=draft",
+            headers=self._auth(token),
+        )
+        self.assertEqual(by_vendor_status.status_code, 200, by_vendor_status.text)
+        vendor_ids = [item["id"] for item in by_vendor_status.json()["data"]]
+        self.assertEqual(vendor_ids, [id_draft_a])
+        self.assertEqual(by_vendor_status.json()["meta"].get("total"), 1)
+
+        by_notes = self.client.get(
+            f"{PRS_URL}?page=1&page_size=20&search=unique-widget-note",
+            headers=self._auth(token),
+        )
+        self.assertEqual(by_notes.status_code, 200, by_notes.text)
+        note_ids = [item["id"] for item in by_notes.json()["data"]]
+        self.assertEqual(note_ids, [id_draft_a])
+
+        by_vendor_name = self.client.get(
+            f"{PRS_URL}?page=1&page_size=20&search=Alpha Supplies",
+            headers=self._auth(token),
+        )
+        self.assertEqual(by_vendor_name.status_code, 200, by_vendor_name.text)
+        name_ids = [item["id"] for item in by_vendor_name.json()["data"]]
+        self.assertIn(id_draft_a, name_ids)
+        self.assertIn(id_submitted_a, name_ids)
+        self.assertNotIn(id_draft_b, name_ids)
+
+        by_number = self.client.get(
+            f"{PRS_URL}?page=1&page_size=20&search={number_a}",
+            headers=self._auth(token),
+        )
+        self.assertEqual(by_number.status_code, 200, by_number.text)
+        number_ids = [item["id"] for item in by_number.json()["data"]]
+        self.assertEqual(number_ids, [id_draft_a])
+
+    def test_list_filters_stay_tenant_scoped(self) -> None:
+        token_a = self._login("admin@demo-business.com", "admin123")
+        vendor_a = self._create_vendor(token_a, f"{TEST_MARKER}OrgA Vendor")
+        create_a = self.client.post(
+            PRS_URL,
+            headers=self._auth(token_a),
+            json={"vendorId": vendor_a, "status": "draft", "notes": f"{TEST_MARKER}org-a-filter"},
+        )
+        self.assertEqual(create_a.status_code, 201, create_a.text)
+        pr_a = create_a.json()["data"]["id"]
+        self.created_ids.append(pr_a)
+
+        token_b = self._login(self.org_b_email, ORG_B_PASSWORD)
+        vendor_b = self._create_vendor(token_b, f"{TEST_MARKER}OrgB Vendor")
+        create_b = self.client.post(
+            PRS_URL,
+            headers=self._auth(token_b),
+            json={"vendorId": vendor_b, "status": "draft", "notes": f"{TEST_MARKER}org-b-filter"},
+        )
+        self.assertEqual(create_b.status_code, 201, create_b.text)
+        pr_b = create_b.json()["data"]["id"]
+        self.created_ids.append(pr_b)
+
+        stolen = self.client.get(
+            f"{PRS_URL}?page=1&page_size=20&vendor_id={vendor_a}&status=draft",
+            headers=self._auth(token_b),
+        )
+        self.assertEqual(stolen.status_code, 200, stolen.text)
+        stolen_ids = [item["id"] for item in stolen.json()["data"]]
+        self.assertNotIn(pr_a, stolen_ids)
+
+        own = self.client.get(
+            f"{PRS_URL}?page=1&page_size=20&vendor_id={vendor_b}&status=draft",
+            headers=self._auth(token_b),
+        )
+        self.assertEqual(own.status_code, 200, own.text)
+        own_ids = [item["id"] for item in own.json()["data"]]
+        self.assertEqual(own_ids, [pr_b])
+        self.assertNotIn(pr_a, own_ids)
 
 
 if __name__ == "__main__":

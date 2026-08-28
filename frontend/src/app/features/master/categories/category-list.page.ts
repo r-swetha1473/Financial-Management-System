@@ -1,10 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -16,9 +17,9 @@ import { FinanceApiService } from '../../finance/services/finance-api.service';
   selector: 'app-category-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     ReactiveFormsModule,
     PageHeaderComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     ModalComponent,
     EmptyStateComponent,
@@ -40,6 +41,8 @@ export class CategoryListPage implements OnInit {
   categories: Category[] = [];
   subcategories: Subcategory[] = [];
   selectedCategoryId = '';
+  search = '';
+  page = 1;
   editingCategory: Category | null = null;
   editingSub: Subcategory | null = null;
   readonly categoryForm = this.fb.nonNullable.group({
@@ -80,19 +83,44 @@ export class CategoryListPage implements OnInit {
     });
   }
 
+  get visibleCategories(): Category[] {
+    const query = this.search.trim().toLowerCase();
+    if (!query) {
+      return this.categories;
+    }
+    return this.categories.filter(
+      (row) =>
+        row.name.toLowerCase().includes(query) || (row.description ?? '').toLowerCase().includes(query),
+    );
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.page = 1;
+    this.load();
+  }
+
   openCategory(row?: Category): void {
-    this.editingCategory = row ?? null;
-    this.categoryForm.reset({ name: row?.name ?? '', description: row?.description ?? '', isActive: row?.isActive ?? true });
+    if (row) {
+      this.toast.error('Updating a category is not supported by the API yet.');
+      return;
+    }
+    this.editingCategory = null;
+    this.categoryForm.reset({ name: '', description: '', isActive: true });
     this.categoryModal.set(true);
   }
 
   openSub(row?: Subcategory): void {
-    this.editingSub = row ?? null;
+    if (row) {
+      this.toast.error('Updating a subcategory is not supported by the API yet.');
+      return;
+    }
+    this.editingSub = null;
     this.subForm.reset({
-      categoryId: row?.categoryId ?? this.selectedCategoryId,
-      name: row?.name ?? '',
-      description: row?.description ?? '',
-      isActive: row?.isActive ?? true,
+      categoryId: this.selectedCategoryId,
+      name: '',
+      description: '',
+      isActive: true,
     });
     this.subModal.set(true);
   }

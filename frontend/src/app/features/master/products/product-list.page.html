@@ -2,15 +2,12 @@
   <app-page-header title="Products" subtitle="Product catalog for this organization, including VIN and model fields from existing records.">
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Add product</button> }
   </app-page-header>
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search name, model, VIN..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search name, model, VIN..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No products" message="Add a product to classify expenses and offerings." /></div> }

@@ -3,7 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
-import { hasPermission } from '../../../core/rbac/permissions';
+import { canMaintainReference } from '../../../core/rbac/permissions';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -36,7 +36,7 @@ export class VendorDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
 
-  readonly canEdit = computed(() => hasPermission(this.auth.session()?.role, 'create'));
+  readonly canEdit = computed(() => canMaintainReference(this.auth.session()?.role));
   readonly loading = signal(true);
   vendor: Vendor | null = null;
   requests: PurchaseRequest[] = [];

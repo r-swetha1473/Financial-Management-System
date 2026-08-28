@@ -1,10 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -17,9 +18,9 @@ import { FinanceApiService } from '../../finance/services/finance-api.service';
   selector: 'app-product-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     ReactiveFormsModule,
     PageHeaderComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -69,7 +70,29 @@ export class ProductListPage implements OnInit {
         this.loading.set(false);
         this.error.set('Unable to load products.');
       },
-    });
+      });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All statuses',
+        value: this.status,
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {
@@ -78,10 +101,8 @@ export class ProductListPage implements OnInit {
     this.modalOpen.set(true);
   }
 
-  openEdit(row: Product): void {
-    this.editing = row;
-    this.form.patchValue(row);
-    this.modalOpen.set(true);
+  openEdit(_row: Product): void {
+    this.toast.error('Updating a product is not supported by the API yet.');
   }
 
   save(): void {

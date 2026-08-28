@@ -1,17 +1,14 @@
 <div class="page">
   <app-page-header title="Audit Logs" subtitle="Read-only organization change history from P2P, O2C, finance, and administration writes." />
+  <app-filter-bar
+    searchPlaceholder="Search entity (e.g. finance_expense)"
+    [search]="entityName"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   <div class="toolbar">
-    <input class="form-input" placeholder="Entity (e.g. finance_expense)" [(ngModel)]="entityName" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="action" (change)="page = 1; load()">
-      <option value="">All actions</option>
-      <option value="create">create</option>
-      <option value="update">update</option>
-      <option value="approve">approve</option>
-      <option value="reject">reject</option>
-    </select>
-    <input class="form-input" type="date" [(ngModel)]="dateFrom" (change)="page = 1; load()" />
-    <input class="form-input" type="date" [(ngModel)]="dateTo" (change)="page = 1; load()" />
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
+    <input class="form-input" type="date" aria-label="From date" [(ngModel)]="dateFrom" (change)="page = 1; load()" />
+    <input class="form-input" type="date" aria-label="To date" [(ngModel)]="dateTo" (change)="page = 1; load()" />
   </div>
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }

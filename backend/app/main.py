@@ -1,6 +1,5 @@
 """BFMS FastAPI application entry point."""
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,6 +10,7 @@ from app.core.config import settings
 from app.core.errors import register_error_handlers
 from app.db.bootstrap import bootstrap
 from app.db.session import engine
+import app.models  # noqa: F401 — register all ORM tables before first flush
 
 
 @asynccontextmanager
@@ -30,16 +30,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_cors_kwargs: dict = {
-    "allow_origins": settings.cors_origin_list,
-    "allow_credentials": True,
-    "allow_methods": ["*"],
-    "allow_headers": ["*"],
-}
-if os.environ.get("VERCEL"):
-    _cors_kwargs["allow_origin_regex"] = r"https://.*\.vercel\.app"
-
-app.add_middleware(CORSMiddleware, **_cors_kwargs)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 register_error_handlers(app)
 app.include_router(api_router, prefix="/api/v1")

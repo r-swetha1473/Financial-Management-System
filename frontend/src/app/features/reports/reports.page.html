@@ -1,11 +1,17 @@
 <div class="page">
   <app-page-header
     title="Reports"
-    subtitle="Export-ready layouts. CSV/PDF generation will attach to these screens when the backend export APIs are available."
+    subtitle="Live aggregations from this organization's records. CSV export is on each report."
+  />
+
+  <app-filter-bar
+    searchPlaceholder="Search reports..."
+    [search]="search"
+    (changed)="onFilters($event)"
   />
 
   <div class="overview-grid">
-    @for (report of reports; track report.route) {
+    @for (report of visibleReports; track report.route) {
       <a class="overview-card" [routerLink]="report.route">
         <h3>{{ report.title }}</h3>
         <p>{{ report.description }}</p>

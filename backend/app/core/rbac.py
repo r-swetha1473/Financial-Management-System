@@ -6,7 +6,8 @@ Role = Literal["ADMIN", "MANAGER", "FINANCE", "OPERATOR", "VIEWER"]
 Permission = Literal["view", "create", "edit", "delete", "approve", "export", "admin", "maintain_reference"]
 
 # maintain_reference matches frontend canMaintainReference (ADMIN | MANAGER).
-# Used for vendor (and later customer/product) master data — not generic document create.
+# Party/lookup master data: vendors, customers, reference-data. Catalog SKUs
+# (products/categories/offerings) stay on create so OPERATOR/FINANCE can maintain them.
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "ADMIN": {"view", "create", "edit", "delete", "approve", "export", "admin", "maintain_reference"},
     "MANAGER": {"view", "create", "edit", "approve", "export", "maintain_reference"},

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import CurrentUser, require_permission
 from app.db.session import get_db
 from app.schemas.common import ApiResponse, PaginatedResponse, PaginationMeta
-from app.schemas.vendor import VendorCreate, VendorOut
+from app.schemas.vendor import VendorCreate, VendorOut, VendorStatus
 from app.services import vendor_service
 
 router = APIRouter(prefix="/vendors", tags=["P2P Vendors"])
@@ -22,8 +22,12 @@ async def list_vendors(
     session: Annotated[AsyncSession, Depends(get_db)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    status: Annotated[VendorStatus | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResponse[VendorOut]:
-    items, total = await vendor_service.list_vendors(session, current.tenant_id, page, page_size)
+    items, total = await vendor_service.list_vendors(
+        session, current.tenant_id, page, page_size, status=status, search=search
+    )
     total_pages = ceil(total / page_size) if total else 0
     return PaginatedResponse(
         data=items,

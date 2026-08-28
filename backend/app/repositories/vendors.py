@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 
 from app.db.repository import TenantScopedRepository
 from app.db.tenant import for_tenant
@@ -13,13 +13,22 @@ class VendorRepository(TenantScopedRepository):
     def _tenant_filter(self):
         return for_tenant(Vendor.organization_id, self.tenant_id)
 
-    async def list_page(self, page: int, page_size: int) -> tuple[list[Vendor], int]:
-        tenant = self._tenant_filter()
-        total = await self.session.scalar(select(func.count()).select_from(Vendor).where(tenant)) or 0
-        stmt = self.scoped(
-            select(Vendor).order_by(Vendor.created_at.desc()).offset((page - 1) * page_size).limit(page_size),
-            Vendor.organization_id,
-        )
+    def _list_filters(self, status: str | None, search: str | None):
+        clauses = [self._tenant_filter()]
+        if status:
+            clauses.append(Vendor.status == status)
+        term = (search or "").strip()
+        if term:
+            like = f"%{term}%"
+            clauses.append(or_(Vendor.name.ilike(like), Vendor.email.ilike(like), Vendor.gst_number.ilike(like)))
+        return and_(*clauses)
+
+    async def list_page(
+        self, page: int, page_size: int, status: str | None = None, search: str | None = None
+    ) -> tuple[list[Vendor], int]:
+        where = self._list_filters(status, search)
+        total = await self.session.scalar(select(func.count()).select_from(Vendor).where(where)) or 0
+        stmt = select(Vendor).where(where).order_by(Vendor.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
         rows = list((await self.session.scalars(stmt)).all())
         return rows, int(total)
 

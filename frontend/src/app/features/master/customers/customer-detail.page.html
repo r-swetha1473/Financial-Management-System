@@ -1,17 +1,19 @@
 <div class="page">
-  @if (!customer) {
+  @if (loading()) {
+    <app-loading-skeleton />
+  } @else if (!customer) {
     <app-empty-state title="Customer not found" message="This customer is not in the current organization." />
   } @else {
     <app-page-header [title]="customer.name" subtitle="Customer record isolated to the signed-in organization.">
       <a class="btn btn--secondary" routerLink="/master/customers">All customers</a>
       @if (canEdit()) {
-        <a class="btn btn--primary" routerLink="/o2c/quotations" [queryParams]="{ create: '1', customerId: customer.id }">New quotation</a>
+        <a class="btn btn--primary" routerLink="/o2c/quotations" [queryParams]="{ create: '1', customerId: customer.id }">New subscribed plan</a>
       }
     </app-page-header>
     <app-o2c-banner currentStep="Customer" />
     <app-document-trail [items]="[
       { label: 'Customer', value: customer.name },
-      { label: 'Quotations', value: '' + quotations.length },
+      { label: 'Plans', value: '' + quotations.length },
       { label: 'Bookings', value: '' + bookings.length },
       { label: 'Invoices', value: '' + legacyInvoices.length }
     ]" />
@@ -20,17 +22,35 @@
       <div class="card__body">
         <dl class="detail-list">
           <dt>Address</dt><dd>{{ customer.address || '—' }}</dd>
+          <dt>Phone</dt><dd>{{ customer.phone || '—' }}</dd>
+          <dt>Driver's license</dt><dd class="text-mono">{{ customer.driversLicenseNumber || '—' }}</dd>
           <dt>GSTIN</dt><dd class="text-mono">{{ customer.gstin || '—' }}</dd>
           <dt>State</dt><dd>{{ customer.state || '—' }}</dd>
           <dt>Credit limit</dt><dd>{{ customer.creditLimit || '—' }}</dd>
-          <dt>Address proof</dt><dd>{{ customer.addressProofName ? customer.addressProofName + ' (' + customer.addressProofSize + ')' : 'Not uploaded' }}</dd>
+          <dt>Photo</dt>
+          <dd>
+            @if (photoUrl()) {
+              <img class="kyc-photo" [src]="photoUrl()" [alt]="customer.photoFileName || 'Customer photo'" />
+            } @else {
+              {{ customer.photoFileName || 'Not uploaded' }}
+            }
+          </dd>
+          <dt>Address proof</dt>
+          <dd>
+            @if (customer.addressProofDocumentId) {
+              <button class="btn btn--ghost btn--sm" type="button" (click)="openAddressProof()">{{ customer.addressProofName || 'View file' }}</button>
+              @if (customer.addressProofSize) { <span class="text-muted"> ({{ customer.addressProofSize }})</span> }
+            } @else {
+              Not uploaded
+            }
+          </dd>
           <dt>Created</dt><dd>{{ customer.createdAt }}</dd>
         </dl>
       </div>
     </article>
     <section class="dashboard-section grid grid--2">
       <div>
-        <h3 class="dashboard-section__title">O2C quotations & sales invoices</h3>
+        <h3 class="dashboard-section__title">O2C subscribed plans & sales invoices</h3>
         <div class="data-table-wrap">
           <table class="data-table">
             <thead><tr><th>Document</th><th>Status</th></tr></thead>
@@ -61,7 +81,9 @@
               @for (row of receipts; track row.id) {
                 <tr><td><a class="table-link" [routerLink]="['/finance/receipts', row.id]">{{ row.invoiceNumber }} receipt</a></td><td>{{ row.receiptDate }}</td></tr>
               }
-              @if (bookings.length === 0 && legacyInvoices.length === 0) { <tr><td colspan="2">None yet</td></tr> }
+              @if (bookings.length === 0 && legacyInvoices.length === 0 && receipts.length === 0) {
+                <tr><td colspan="2">Not available yet</td></tr>
+              }
             </tbody>
           </table>
         </div>

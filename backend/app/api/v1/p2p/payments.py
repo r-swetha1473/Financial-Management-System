@@ -22,8 +22,11 @@ async def list_payments(
     session: Annotated[AsyncSession, Depends(get_db)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResponse[PaymentOut]:
-    items, total = await payment_service.list_payments(session, current.tenant_id, page, page_size)
+    items, total = await payment_service.list_payments(
+        session, current.tenant_id, page, page_size, search=search
+    )
     total_pages = ceil(total / page_size) if total else 0
     return PaginatedResponse(
         data=items,

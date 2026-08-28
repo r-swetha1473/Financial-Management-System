@@ -3,15 +3,12 @@
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New delivery</button> }
   </app-page-header>
   <app-o2c-banner currentStep="Delivery / Service" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search delivery, order, customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="delivered">Delivered</option>
-      <option value="cancelled">Cancelled</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search delivery, order, customer..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No deliveries" message="Record a delivery after a sales order is confirmed." /></div> }

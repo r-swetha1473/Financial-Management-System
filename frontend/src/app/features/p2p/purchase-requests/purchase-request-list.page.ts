@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -24,6 +25,7 @@ import { P2pApiService } from '../services/p2p-api.service';
     RouterLink,
     PageHeaderComponent,
     P2pBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -79,7 +81,12 @@ export class PurchaseRequestListPage implements OnInit {
   load(): void {
     this.loading.set(true);
     this.api
-      .listPurchaseRequests({ page: this.page, search: this.search, status: this.status, vendorId: this.vendorId })
+      .listPurchaseRequests({
+        page: this.page,
+        search: this.search,
+        status: this.status,
+        vendorId: this.vendorId,
+      })
       .subscribe({
         next: (result) => {
           this.items = result.items;
@@ -91,6 +98,39 @@ export class PurchaseRequestListPage implements OnInit {
           this.error.set('Unable to load purchase requests.');
         },
       });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'vendor',
+        label: 'Vendor',
+        blankLabel: 'All Vendors',
+        value: this.vendorId,
+        options: this.vendors.map((vendor) => ({ value: vendor.id, label: vendor.name })),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All Statuses',
+        value: this.status,
+        options: [
+          { value: 'draft', label: 'Draft' },
+          { value: 'submitted', label: 'Submitted' },
+          { value: 'approved', label: 'Approved' },
+          { value: 'rejected', label: 'Rejected' },
+          { value: 'converted', label: 'Converted' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.vendorId = state.values['vendor'] ?? '';
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

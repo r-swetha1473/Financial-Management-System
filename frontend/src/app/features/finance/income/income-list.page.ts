@@ -1,8 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
@@ -16,10 +16,10 @@ import { FinanceApiService } from '../services/finance-api.service';
   selector: 'app-income-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     RouterLink,
     PageHeaderComponent,
     FinanceBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     EmptyStateComponent,
@@ -44,31 +44,56 @@ export class IncomeListPage implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.api.listIncome({ page: 1, pageSize: 100, search: this.search }).subscribe({
+    this.api.listIncome({ page: this.page, pageSize: 20 }).subscribe({
       next: (result) => {
-        const filtered = this.sourceType ? result.items.filter((row) => row.sourceType === this.sourceType) : result.items;
-        this.total = filtered.length;
-        const start = (this.page - 1) * 10;
-        this.items = filtered.slice(start, start + 10);
+        const query = this.search.trim().toLowerCase();
+        const filtered = result.items.filter((row) => {
+          if (this.sourceType && row.sourceType !== this.sourceType) {
+            return false;
+          }
+          if (!query) {
+            return true;
+          }
+          return (
+            row.documentNumber.toLowerCase().includes(query) ||
+            (row.customerName ?? '').toLowerCase().includes(query) ||
+            this.sourceLabel(row.sourceType).toLowerCase().includes(query)
+          );
+        });
+        this.items = filtered;
+        this.total = this.sourceType || query ? filtered.length : result.total;
         this.loading.set(false);
       },
       error: () => {
         this.loading.set(false);
         this.error.set('Unable to load income.');
       },
-    });
+      });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'sourceType',
+        label: 'Source',
+        blankLabel: 'All cash sources',
+        value: this.sourceType,
+        options: [
+          { value: 'collection', label: 'O2C collections' },
+          { value: 'receipt', label: 'Legacy receipts' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.sourceType = state.values['sourceType'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   sourceLabel(type: IncomeRecord['sourceType']): string {
-    switch (type) {
-      case 'invoice':
-        return 'Existing invoice (accrual)';
-      case 'sales_invoice':
-        return 'O2C sales invoice (accrual)';
-      case 'receipt':
-        return 'Receipt (cash)';
-      case 'collection':
-        return 'O2C collection (cash)';
-    }
+    return type === 'receipt' ? 'Legacy receipt (cash)' : 'O2C collection (cash)';
   }
 }

@@ -27,6 +27,9 @@ dist/
 .vercel
 .supabase
 
+# Database backups (local only; may contain data)
+backups/
+
 # Logs and OS
 *.log
 .DS_Store

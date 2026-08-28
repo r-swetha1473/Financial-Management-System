@@ -3,7 +3,7 @@
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 
 from app.db.repository import TenantScopedRepository
 from app.db.sequences import floor_year_sequence, increment_sequence
@@ -19,17 +19,48 @@ class PurchaseRequestRepository(TenantScopedRepository):
     def _tenant_filter(self):
         return for_tenant(PurchaseRequest.organization_id, self.tenant_id)
 
-    async def list_page(self, page: int, page_size: int) -> tuple[list[tuple[PurchaseRequest, str | None, str | None]], int]:
-        tenant = self._tenant_filter()
-        total = await self.session.scalar(select(func.count()).select_from(PurchaseRequest).where(tenant)) or 0
+    def _vendor_join(self):
+        return and_(Vendor.id == PurchaseRequest.vendor_id, Vendor.organization_id == self.tenant_id)
+
+    def _list_filters(self, vendor_id: UUID | None, status: str | None, search: str | None):
+        clauses = [self._tenant_filter()]
+        if vendor_id is not None:
+            clauses.append(PurchaseRequest.vendor_id == vendor_id)
+        if status:
+            clauses.append(PurchaseRequest.status == status)
+        term = (search or "").strip()
+        if term:
+            like = f"%{term}%"
+            clauses.append(
+                or_(
+                    PurchaseRequest.request_number.ilike(like),
+                    Vendor.name.ilike(like),
+                    PurchaseRequest.notes.ilike(like),
+                )
+            )
+        return and_(*clauses)
+
+    async def list_page(
+        self,
+        page: int,
+        page_size: int,
+        vendor_id: UUID | None = None,
+        status: str | None = None,
+        search: str | None = None,
+    ) -> tuple[list[tuple[PurchaseRequest, str | None, str | None]], int]:
+        where = self._list_filters(vendor_id, status, search)
+        vendor_join = self._vendor_join()
+        total = await self.session.scalar(
+            select(func.count())
+            .select_from(PurchaseRequest)
+            .outerjoin(Vendor, vendor_join)
+            .where(where)
+        ) or 0
         stmt = (
             select(PurchaseRequest, Vendor.name, User.full_name)
-            .outerjoin(
-                Vendor,
-                and_(Vendor.id == PurchaseRequest.vendor_id, Vendor.organization_id == self.tenant_id),
-            )
+            .outerjoin(Vendor, vendor_join)
             .outerjoin(User, User.id == PurchaseRequest.requested_by)
-            .where(tenant)
+            .where(where)
             .order_by(PurchaseRequest.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)

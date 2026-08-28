@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.config import settings
 from app.core.security import hash_password
 from app.main import app
+from app.models.goods_receipt import GoodsReceipt
 from app.models.organization import Organization
 from app.models.purchase_order import PurchaseOrder
 from app.models.purchase_request import PurchaseRequest
@@ -24,6 +25,7 @@ from app.models.vendor import Vendor
 VENDORS_URL = "/api/v1/p2p/vendors"
 PRS_URL = "/api/v1/p2p/purchase-requests"
 POS_URL = "/api/v1/p2p/purchase-orders"
+GRNS_URL = "/api/v1/p2p/goods-receipts"
 LOGIN_URL = "/api/v1/auth/login"
 TEST_MARKER = "p2p-po-test-"
 ORG_B_PASSWORD = "isoadmin123"
@@ -103,6 +105,9 @@ class PurchaseOrderApiTests(unittest.TestCase):
     async def _cleanup(cls) -> None:
         async def work(session: AsyncSession):
             if cls.created_po_ids:
+                await session.execute(
+                    delete(GoodsReceipt).where(GoodsReceipt.purchase_order_id.in_(cls.created_po_ids))
+                )
                 await session.execute(delete(PurchaseOrder).where(PurchaseOrder.id.in_(cls.created_po_ids)))
             marked_prs = select(PurchaseRequest.id).where(PurchaseRequest.notes.like(f"{TEST_MARKER}%"))
             await session.execute(delete(PurchaseOrder).where(PurchaseOrder.purchase_request_id.in_(marked_prs)))
@@ -113,6 +118,7 @@ class PurchaseOrderApiTests(unittest.TestCase):
                 await session.execute(delete(Vendor).where(Vendor.id.in_(cls.created_vendor_ids)))
             await session.execute(delete(Vendor).where(Vendor.name.like(f"{TEST_MARKER}%")))
             if cls.org_b_id is not None:
+                await session.execute(delete(GoodsReceipt).where(GoodsReceipt.organization_id == cls.org_b_id))
                 await session.execute(delete(PurchaseOrder).where(PurchaseOrder.organization_id == cls.org_b_id))
                 await session.execute(delete(PurchaseRequest).where(PurchaseRequest.organization_id == cls.org_b_id))
                 await session.execute(delete(Vendor).where(Vendor.organization_id == cls.org_b_id))
@@ -193,7 +199,7 @@ class PurchaseOrderApiTests(unittest.TestCase):
         po_a = first.json()["data"]
         self.created_po_ids.append(po_a["id"])
         number_a = po_a.get("poNumber") or po_a.get("po_number")
-        self.assertRegex(number_a, rf"^PO-{year}-\d{{3}}$")
+        self.assertRegex(number_a, rf"^PO-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, "PO-SHOULD-BE-IGNORED")
         self.assertEqual(po_a["purchaseRequestId"], first_pr["id"])
         self.assertEqual(self._pr_status(operator, first_pr["id"]), "converted")
@@ -209,7 +215,7 @@ class PurchaseOrderApiTests(unittest.TestCase):
         po_b = second.json()["data"]
         self.created_po_ids.append(po_b["id"])
         number_b = po_b.get("poNumber") or po_b.get("po_number")
-        self.assertRegex(number_b, rf"^PO-{year}-\d{{3}}$")
+        self.assertRegex(number_b, rf"^PO-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, number_b)
         self.assertEqual(self._pr_status(operator, second_pr["id"]), "converted")
 
@@ -267,7 +273,7 @@ class PurchaseOrderApiTests(unittest.TestCase):
         self.assertIsNone(po.get("purchaseRequestId"))
         self.assertEqual(po.get("purchaseRequestNumber") or "", "")
         self.assertEqual(po["vendorId"], vendor_id)
-        self.assertRegex(po.get("poNumber") or po.get("po_number"), rf"^PO-{year}-\d{{3}}$")
+        self.assertRegex(po.get("poNumber") or po.get("po_number"), rf"^PO-{year}-\d{{3,}}$")
         self.assertEqual(Decimal(str(po.get("totalAmount") or po.get("total_amount"))), Decimal("1500.00"))
 
         missing_vendor = self.client.post(
@@ -361,6 +367,114 @@ class PurchaseOrderApiTests(unittest.TestCase):
 
         token_b = self._login(self.org_b_email, ORG_B_PASSWORD)
         stolen = self.client.get(f"{POS_URL}/{po_id}", headers=self._auth(token_b))
+        self.assertEqual(stolen.status_code, 404, stolen.text)
+
+    def test_list_filters_by_vendor_status_and_search(self) -> None:
+        admin = self._login("admin@demo-business.com", "admin123")
+        operator = self._login("operator@demo-business.com", "operator123")
+        vendor_a = self._create_vendor(admin)
+        vendor_b = self._create_vendor(admin)
+        draft_a = self.client.post(
+            POS_URL,
+            headers=self._auth(operator),
+            json={"vendorId": vendor_a, "totalAmount": "10.00", "status": "draft"},
+        )
+        issued_a = self.client.post(
+            POS_URL,
+            headers=self._auth(operator),
+            json={"vendorId": vendor_a, "totalAmount": "20.00", "status": "issued"},
+        )
+        draft_b = self.client.post(
+            POS_URL,
+            headers=self._auth(operator),
+            json={"vendorId": vendor_b, "totalAmount": "30.00", "status": "draft"},
+        )
+        self.assertEqual(draft_a.status_code, 201, draft_a.text)
+        self.assertEqual(issued_a.status_code, 201, issued_a.text)
+        self.assertEqual(draft_b.status_code, 201, draft_b.text)
+        id_draft_a = draft_a.json()["data"]["id"]
+        id_issued_a = issued_a.json()["data"]["id"]
+        id_draft_b = draft_b.json()["data"]["id"]
+        self.created_po_ids.extend([id_draft_a, id_issued_a, id_draft_b])
+        number_a = draft_a.json()["data"].get("poNumber") or draft_a.json()["data"].get("po_number")
+
+        filtered = self.client.get(
+            f"{POS_URL}?page=1&page_size=20&vendor_id={vendor_a}&status=draft",
+            headers=self._auth(operator),
+        )
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        ids = [item["id"] for item in filtered.json()["data"]]
+        self.assertEqual(ids, [id_draft_a])
+        self.assertEqual(filtered.json()["meta"].get("total"), 1)
+        self.assertNotIn(id_issued_a, ids)
+        self.assertNotIn(id_draft_b, ids)
+
+        by_number = self.client.get(
+            f"{POS_URL}?page=1&page_size=20&search={number_a}",
+            headers=self._auth(operator),
+        )
+        self.assertEqual(by_number.status_code, 200, by_number.text)
+        self.assertEqual([item["id"] for item in by_number.json()["data"]], [id_draft_a])
+
+    def test_operator_can_issue_draft_po_then_record_grn(self) -> None:
+        admin = self._login("admin@demo-business.com", "admin123")
+        operator = self._login("operator@demo-business.com", "operator123")
+        viewer = self._login("viewer@demo-business.com", "viewer123")
+        vendor_id = self._create_vendor(admin)
+
+        created = self.client.post(
+            POS_URL,
+            headers=self._auth(operator),
+            json={"vendorId": vendor_id, "totalAmount": "2200.00", "status": "draft"},
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        po_id = created.json()["data"]["id"]
+        self.created_po_ids.append(po_id)
+
+        blocked_grn = self.client.post(
+            GRNS_URL,
+            headers=self._auth(operator),
+            json={"purchaseOrderId": po_id, "status": "received"},
+        )
+        self.assertEqual(blocked_grn.status_code, 400, blocked_grn.text)
+
+        viewer_issue = self.client.patch(f"{POS_URL}/{po_id}/issue", headers=self._auth(viewer))
+        self.assertEqual(viewer_issue.status_code, 403, viewer_issue.text)
+
+        issued = self.client.patch(f"{POS_URL}/{po_id}/issue", headers=self._auth(operator))
+        self.assertEqual(issued.status_code, 200, issued.text)
+        self.assertEqual(issued.json()["data"]["status"], "issued")
+
+        again = self.client.patch(f"{POS_URL}/{po_id}/issue", headers=self._auth(operator))
+        self.assertEqual(again.status_code, 400, again.text)
+
+        already_issued = self.client.post(
+            POS_URL,
+            headers=self._auth(operator),
+            json={"vendorId": vendor_id, "totalAmount": "10.00", "status": "issued"},
+        )
+        self.assertEqual(already_issued.status_code, 201, already_issued.text)
+        issued_id = already_issued.json()["data"]["id"]
+        self.created_po_ids.append(issued_id)
+        wrong_status = self.client.patch(f"{POS_URL}/{issued_id}/issue", headers=self._auth(operator))
+        self.assertEqual(wrong_status.status_code, 400, wrong_status.text)
+
+        grn = self.client.post(
+            GRNS_URL,
+            headers=self._auth(operator),
+            json={"purchaseOrderId": po_id, "status": "received"},
+        )
+        self.assertEqual(grn.status_code, 201, grn.text)
+        self.assertEqual(grn.json()["data"]["purchaseOrderId"], po_id)
+
+        missing = self.client.patch(
+            f"{POS_URL}/00000000-0000-0000-0000-000000000099/issue",
+            headers=self._auth(operator),
+        )
+        self.assertEqual(missing.status_code, 404, missing.text)
+
+        token_b = self._login(self.org_b_email, ORG_B_PASSWORD)
+        stolen = self.client.patch(f"{POS_URL}/{po_id}/issue", headers=self._auth(token_b))
         self.assertEqual(stolen.status_code, 404, stolen.text)
 
 

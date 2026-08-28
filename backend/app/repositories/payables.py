@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.repository import TenantScopedRepository
@@ -66,14 +66,33 @@ class PayableRepository(TenantScopedRepository):
             )
         )
 
+    def _list_filters(self, vendor_id: UUID | None, status: str | None, search: str | None):
+        clauses = [self._tenant_filter()]
+        if vendor_id is not None:
+            clauses.append(Payable.vendor_id == vendor_id)
+        if status:
+            clauses.append(Payable.status == status)
+        term = (search or "").strip()
+        if term:
+            like = f"%{term}%"
+            clauses.append(or_(SupplierInvoice.invoice_number.ilike(like), Vendor.name.ilike(like)))
+        return and_(*clauses)
+
     async def list_page(
-        self, page: int, page_size: int
+        self,
+        page: int,
+        page_size: int,
+        vendor_id: UUID | None = None,
+        status: str | None = None,
+        search: str | None = None,
     ) -> tuple[list[tuple[Payable, str | None, str | None]], int]:
-        tenant = self._tenant_filter()
-        total = await self.session.scalar(select(func.count()).select_from(Payable).where(tenant)) or 0
+        where = self._list_filters(vendor_id, status, search)
+        total = await self.session.scalar(
+            select(func.count()).select_from(self._with_names().where(where).subquery())
+        ) or 0
         stmt = (
             self._with_names()
-            .where(tenant)
+            .where(where)
             .order_by(Payable.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)

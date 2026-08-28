@@ -7,6 +7,7 @@ import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { parseMoneyInput } from '../../../core/utils/money.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -26,6 +27,7 @@ import { P2pApiService } from '../../p2p/services/p2p-api.service';
     RouterLink,
     PageHeaderComponent,
     FinanceBannerComponent,
+    FilterBarComponent,
     PaginationComponent,
     ModalComponent,
     EmptyStateComponent,
@@ -49,6 +51,7 @@ export class ExpenseListPage implements OnInit {
   vendors: Vendor[] = [];
   total = 0;
   page = 1;
+  search = '';
 
   readonly form = this.fb.nonNullable.group({
     vendorId: [''],
@@ -79,6 +82,26 @@ export class ExpenseListPage implements OnInit {
           this.error.set('Unable to load expenses.');
         },
       });
+  }
+
+  get visibleItems(): Expense[] {
+    const query = this.search.trim().toLowerCase();
+    if (!query) {
+      return this.items;
+    }
+    return this.items.filter(
+      (row) =>
+        (row.vendorName ?? '').toLowerCase().includes(query) ||
+        (row.productServiceName ?? '').toLowerCase().includes(query) ||
+        (row.productName ?? '').toLowerCase().includes(query) ||
+        row.expenseDate.toLowerCase().includes(query),
+    );
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

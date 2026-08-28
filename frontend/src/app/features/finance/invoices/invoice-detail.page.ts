@@ -33,7 +33,7 @@ export class InvoiceDetailPage implements OnInit {
     forkJoin({ record: this.api.getInvoice(id), receipts: this.api.listReceipts({ pageSize: 50 }) }).subscribe((data) => {
       this.record = data.record;
       this.receipts = data.receipts.items.filter((row) => row.invoiceId === id);
-      this.outstanding = this.api.legacyInvoiceOutstanding(id)?.outstanding ?? '0.00';
+      this.outstanding = data.record?.outstanding ?? data.record?.invoiceAmount ?? '0.00';
     });
   }
 }

@@ -3,15 +3,20 @@
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New expense</button> }
   </app-page-header>
   <app-finance-banner description="Only cost, date, description, and optional vendor are stored. GST, category, SKU, and attachments are not collected until those columns exist. Optional vendor is display-only — not a P2P document link." />
+  <app-filter-bar
+    searchPlaceholder="Search expenses..."
+    [search]="search"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
-  @else if (items.length === 0) { <div class="card"><app-empty-state title="No expenses" message="Record operational spend for this organization." /></div> }
+  @else if (visibleItems.length === 0) { <div class="card"><app-empty-state title="No expenses" message="Record operational spend for this organization." /></div> }
   @else {
     <div class="data-table-wrap">
       <table class="data-table">
         <thead><tr><th>Date</th><th>Vendor</th><th>Item</th><th class="col-amount">Cost</th><th class="col-actions">Actions</th></tr></thead>
         <tbody>
-          @for (row of items; track row.id) {
+          @for (row of visibleItems; track row.id) {
             <tr>
               <td>{{ row.expenseDate }}</td>
               <td>

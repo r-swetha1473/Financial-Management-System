@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 
 from app.db.repository import TenantScopedRepository
 from app.db.sequences import floor_year_sequence, increment_sequence
@@ -20,23 +20,54 @@ class PurchaseOrderRepository(TenantScopedRepository):
     def _tenant_filter(self):
         return for_tenant(PurchaseOrder.organization_id, self.tenant_id)
 
-    async def list_page(self, page: int, page_size: int) -> tuple[list[tuple[PurchaseOrder, str | None, str | None]], int]:
-        tenant = self._tenant_filter()
-        total = await self.session.scalar(select(func.count()).select_from(PurchaseOrder).where(tenant)) or 0
+    def _vendor_join(self):
+        return and_(Vendor.id == PurchaseOrder.vendor_id, Vendor.organization_id == self.tenant_id)
+
+    def _request_join(self):
+        return and_(
+            PurchaseRequest.id == PurchaseOrder.purchase_request_id,
+            PurchaseRequest.organization_id == self.tenant_id,
+        )
+
+    def _list_filters(self, vendor_id: UUID | None, status: str | None, search: str | None):
+        clauses = [self._tenant_filter()]
+        if vendor_id is not None:
+            clauses.append(PurchaseOrder.vendor_id == vendor_id)
+        if status:
+            clauses.append(PurchaseOrder.status == status)
+        term = (search or "").strip()
+        if term:
+            like = f"%{term}%"
+            clauses.append(
+                or_(
+                    PurchaseOrder.po_number.ilike(like),
+                    Vendor.name.ilike(like),
+                    PurchaseRequest.request_number.ilike(like),
+                )
+            )
+        return and_(*clauses)
+
+    async def list_page(
+        self,
+        page: int,
+        page_size: int,
+        vendor_id: UUID | None = None,
+        status: str | None = None,
+        search: str | None = None,
+    ) -> tuple[list[tuple[PurchaseOrder, str | None, str | None]], int]:
+        where = self._list_filters(vendor_id, status, search)
+        total = await self.session.scalar(
+            select(func.count())
+            .select_from(PurchaseOrder)
+            .outerjoin(Vendor, self._vendor_join())
+            .outerjoin(PurchaseRequest, self._request_join())
+            .where(where)
+        ) or 0
         stmt = (
             select(PurchaseOrder, Vendor.name, PurchaseRequest.request_number)
-            .outerjoin(
-                Vendor,
-                and_(Vendor.id == PurchaseOrder.vendor_id, Vendor.organization_id == self.tenant_id),
-            )
-            .outerjoin(
-                PurchaseRequest,
-                and_(
-                    PurchaseRequest.id == PurchaseOrder.purchase_request_id,
-                    PurchaseRequest.organization_id == self.tenant_id,
-                ),
-            )
-            .where(tenant)
+            .outerjoin(Vendor, self._vendor_join())
+            .outerjoin(PurchaseRequest, self._request_join())
+            .where(where)
             .order_by(PurchaseOrder.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)

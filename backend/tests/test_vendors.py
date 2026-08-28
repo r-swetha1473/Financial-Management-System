@@ -169,6 +169,49 @@ class VendorApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 403, response.text)
 
+    def test_list_filters_by_search_and_status(self) -> None:
+        token = self._login("admin@demo-business.com", "admin123")
+        unique = uuid4().hex[:8]
+        active = self.client.post(
+            VENDORS_URL,
+            headers=self._auth(token),
+            json={"name": f"{TEST_MARKER}{unique}-alpha", "status": "active", "email": f"alpha-{unique}@example.com"},
+        )
+        inactive = self.client.post(
+            VENDORS_URL,
+            headers=self._auth(token),
+            json={"name": f"{TEST_MARKER}{unique}-beta", "status": "inactive", "gstin": f"27AAAAA{unique[:5].upper()}1Z5"},
+        )
+        self.assertEqual(active.status_code, 201, active.text)
+        self.assertEqual(inactive.status_code, 201, inactive.text)
+        active_id = active.json()["data"]["id"]
+        inactive_id = inactive.json()["data"]["id"]
+        self.created_vendor_ids.extend([active_id, inactive_id])
+
+        by_status = self.client.get(
+            f"{VENDORS_URL}?page=1&page_size=20&status=inactive",
+            headers=self._auth(token),
+        )
+        self.assertEqual(by_status.status_code, 200, by_status.text)
+        status_ids = [item["id"] for item in by_status.json()["data"]]
+        self.assertIn(inactive_id, status_ids)
+        self.assertNotIn(active_id, status_ids)
+
+        by_name = self.client.get(
+            f"{VENDORS_URL}?page=1&page_size=20&search={unique}-alpha",
+            headers=self._auth(token),
+        )
+        self.assertEqual(by_name.status_code, 200, by_name.text)
+        name_ids = [item["id"] for item in by_name.json()["data"]]
+        self.assertEqual(name_ids, [active_id])
+
+        by_email = self.client.get(
+            f"{VENDORS_URL}?page=1&page_size=20&search=alpha-{unique}@example.com",
+            headers=self._auth(token),
+        )
+        self.assertEqual(by_email.status_code, 200, by_email.text)
+        self.assertEqual([item["id"] for item in by_email.json()["data"]], [active_id])
+
     def test_vendor_created_in_org_a_is_invisible_to_org_b(self) -> None:
         token_a = self._login("admin@demo-business.com", "admin123")
         name = f"{TEST_MARKER}{uuid4().hex[:8]}"

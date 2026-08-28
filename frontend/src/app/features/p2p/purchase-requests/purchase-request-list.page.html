@@ -6,24 +6,12 @@
   </app-page-header>
   <app-p2p-banner currentStep="Purchase Request" />
 
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search number, vendor, notes..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="vendorId" (change)="page = 1; load()">
-      <option value="">All vendors</option>
-      @for (vendor of vendors; track vendor.id) {
-        <option [value]="vendor.id">{{ vendor.name }}</option>
-      }
-    </select>
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="draft">Draft</option>
-      <option value="submitted">Submitted</option>
-      <option value="approved">Approved</option>
-      <option value="rejected">Rejected</option>
-      <option value="converted">Converted</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search purchase requests..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
 
   @if (loading()) {
     <app-loading-skeleton />

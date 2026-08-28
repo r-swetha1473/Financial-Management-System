@@ -3,20 +3,12 @@
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New invoice</button> }
   </app-page-header>
   <app-existing-sales-banner currentStep="Invoice" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search invoice or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
-      <option value="">All customers</option>
-      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
-    </select>
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="pending">Pending</option>
-      <option value="partially_paid">Partially paid</option>
-      <option value="paid">Paid</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search invoice or customer..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No invoices" message="Record an invoice against a booking or customer." /></div> }
@@ -38,7 +30,7 @@
                 @if (!row.bookingId && !row.planName) { — }
               </td>
               <td class="col-amount">{{ row.invoiceAmount | inr }}</td>
-              <td class="col-amount">{{ outstanding(row.id) | inr }}</td>
+              <td class="col-amount">{{ outstanding(row) | inr }}</td>
               <td>{{ row.isGstInvoice ? (row.gstAmount | inr) : 'No' }}</td>
               <td><app-status-badge [status]="row.status" /></td>
               <td class="col-actions">
@@ -67,13 +59,6 @@
         <select class="form-select" formControlName="bookingId">
           <option value="">None</option>
           @for (booking of bookings; track booking.id) { <option [value]="booking.id">{{ booking.offeringName }} — {{ booking.customerName }}</option> }
-        </select>
-      </div>
-      <div class="form-field">
-        <label class="form-field__label">Plan</label>
-        <select class="form-select" formControlName="planId">
-          <option value="">None</option>
-          @for (plan of plans; track plan.id) { <option [value]="plan.id">{{ plan.name }}</option> }
         </select>
       </div>
       <div class="form-field"><label class="form-field__label">Raised date</label><input class="form-input" type="date" formControlName="invoiceRaisedDate" /></div>

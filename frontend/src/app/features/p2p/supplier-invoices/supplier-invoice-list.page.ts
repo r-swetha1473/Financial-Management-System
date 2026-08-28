@@ -8,6 +8,7 @@ import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { parseMoneyInput } from '../../../core/utils/money.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -27,6 +28,7 @@ import { P2pApiService } from '../services/p2p-api.service';
     RouterLink,
     PageHeaderComponent,
     P2pBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -112,6 +114,38 @@ export class SupplierInvoiceListPage implements OnInit {
           this.error.set('Unable to load supplier invoices.');
         },
       });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'vendor',
+        label: 'Vendor',
+        blankLabel: 'All Vendors',
+        value: this.vendorId,
+        options: this.vendors.map((vendor) => ({ value: vendor.id, label: vendor.name })),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All Statuses',
+        value: this.status,
+        options: [
+          { value: 'pending', label: 'Pending' },
+          { value: 'partially_paid', label: 'Partially paid' },
+          { value: 'paid', label: 'Paid' },
+          { value: 'cancelled', label: 'Cancelled' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.vendorId = state.values['vendor'] ?? '';
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

@@ -25,12 +25,12 @@
       <app-summary-card label="Outstanding Payables" [value]="summary.outstandingPayables" tone="payable" meta="Open supplier balances" />
     </div>
 
-    <section class="dashboard-section grid grid--2">
+    <section class="dashboard-section">
       <article class="card chart-card">
         <div class="card__header">
           <div>
             <h3 class="card__title">Expense vs Income</h3>
-            <p class="card__subtitle">Compare operating inflows and outflows</p>
+            <p class="card__subtitle">Cash-basis collections and receipts vs expenses and supplier payments</p>
           </div>
           <div class="dashboard-filters">
             @for (option of periods; track option) {
@@ -47,18 +47,6 @@
         </div>
         <div class="card__body">
           <canvas #trendCanvas height="240"></canvas>
-        </div>
-      </article>
-
-      <article class="card chart-card">
-        <div class="card__header">
-          <div>
-            <h3 class="card__title">Expense by category</h3>
-            <p class="card__subtitle">Where spend is concentrated</p>
-          </div>
-        </div>
-        <div class="card__body">
-          <canvas #categoryCanvas height="240"></canvas>
         </div>
       </article>
     </section>
@@ -81,115 +69,128 @@
         </div>
       </article>
 
-      <article class="card">
+      <article class="card coming-soon" aria-disabled="true" title="Coming soon">
         <div class="card__header">
           <h3 class="card__title">Product financial summary</h3>
+          <span class="coming-soon__badge">Soon</span>
         </div>
-        <div class="data-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th class="col-amount">Income</th>
-                <th class="col-amount">Expenses</th>
-                <th class="col-amount">Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (product of products; track product.productId) {
-                <tr>
-                  <td>{{ product.productName }}</td>
-                  <td class="col-amount amount--positive">{{ product.totalIncome | inr }}</td>
-                  <td class="col-amount amount--negative">{{ product.totalExpenses | inr }}</td>
-                  <td class="col-amount">{{ product.net | inr }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="card__body">
+          <p class="coming-soon__message">Coming soon. Product-level revenue is not tracked yet, so this stays hidden rather than showing sample totals.</p>
         </div>
       </article>
     </section>
 
     <section class="dashboard-section">
-      <h3 class="dashboard-section__title">Recent expenses</h3>
-      <div class="data-table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Expense ID</th>
-              <th>Vendor</th>
-              <th>Category</th>
-              <th class="col-amount">Amount</th>
-              <th>Date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of expenses; track row.id) {
-              <tr>
-                <td class="text-mono">{{ row.id }}</td>
-                <td>{{ row.vendor }}</td>
-                <td>{{ row.category }}</td>
-                <td class="col-amount">{{ row.amount | inr }}</td>
-                <td>{{ row.expenseDate }}</td>
-                <td><app-status-badge [status]="row.status" /></td>
-              </tr>
-            }
-          </tbody>
-        </table>
+      <div class="dashboard-section__heading">
+        <h3 class="dashboard-section__title">Recent expenses</h3>
+        <a class="btn btn--ghost btn--sm" routerLink="/finance/expenses">View all</a>
       </div>
+      <article class="card">
+        @if (expenses.length === 0) {
+          <div class="card__body">
+            <app-empty-state title="No expenses yet" message="Posted operating expenses for this organization will appear here." />
+          </div>
+        } @else {
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Vendor</th>
+                  <th>Category</th>
+                  <th class="col-amount">Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of expenses; track row.id) {
+                  <tr>
+                    <td>{{ row.expenseDate }}</td>
+                    <td>{{ row.vendor }}</td>
+                    <td>{{ row.category }}</td>
+                    <td class="col-amount">{{ row.amount | inr }}</td>
+                    <td><app-status-badge [status]="row.status" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </article>
     </section>
 
     <section class="dashboard-section grid grid--2">
       <div>
-        <h3 class="dashboard-section__title">Recent invoices</h3>
-        <div class="data-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Invoice</th>
-                <th>Customer</th>
-                <th class="col-amount">Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of invoices; track row.id) {
-                <tr>
-                  <td class="text-mono">{{ row.invoiceNumber }}</td>
-                  <td>{{ row.customer }}</td>
-                  <td class="col-amount">{{ row.amount | inr }}</td>
-                  <td><app-status-badge [status]="row.status" /></td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="dashboard-section__heading">
+          <h3 class="dashboard-section__title">Recent invoices</h3>
+          <a class="btn btn--ghost btn--sm" routerLink="/o2c/sales-invoices">View all</a>
         </div>
+        <article class="card">
+          @if (invoices.length === 0) {
+            <div class="card__body">
+              <app-empty-state title="No invoices yet" message="Sales invoices and booking invoices for this organization will appear here." />
+            </div>
+          } @else {
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th class="col-amount">Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of invoices; track row.id) {
+                    <tr>
+                      <td class="text-mono">{{ row.invoiceNumber }}</td>
+                      <td>{{ row.customer }}</td>
+                      <td class="col-amount">{{ row.amount | inr }}</td>
+                      <td><app-status-badge [status]="row.status" /></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </article>
       </div>
       <div>
-        <h3 class="dashboard-section__title">Recent receipts</h3>
-        <div class="data-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Receipt</th>
-                <th>Invoice</th>
-                <th class="col-amount">Amount</th>
-                <th>Mode</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of receipts; track row.id) {
-                <tr>
-                  <td class="text-mono">{{ row.id }}</td>
-                  <td class="text-mono">{{ row.invoiceNumber }}</td>
-                  <td class="col-amount">{{ row.amount | inr }}</td>
-                  <td>{{ row.paymentMode }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="dashboard-section__heading">
+          <h3 class="dashboard-section__title">Recent receipts</h3>
+          <a class="btn btn--ghost btn--sm" routerLink="/o2c/collections">View all</a>
         </div>
+        <article class="card">
+          @if (receipts.length === 0) {
+            <div class="card__body">
+              <app-empty-state title="No receipts yet" message="Collections and booking receipts for this organization will appear here." />
+            </div>
+          } @else {
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th class="col-amount">Amount</th>
+                    <th>Date</th>
+                    <th>Mode</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of receipts; track row.id) {
+                    <tr>
+                      <td class="text-mono">{{ row.invoiceNumber }}</td>
+                      <td class="col-amount">{{ row.amount | inr }}</td>
+                      <td>{{ row.receiptDate }}</td>
+                      <td>{{ row.paymentMode }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </article>
       </div>
     </section>
   }

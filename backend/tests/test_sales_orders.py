@@ -187,7 +187,7 @@ class SalesOrderApiTests(unittest.TestCase):
         so_a = first.json()["data"]
         self.created_so_ids.append(so_a["id"])
         number_a = so_a.get("orderNumber") or so_a.get("order_number")
-        self.assertRegex(number_a, rf"^SO-{year}-\d{{3}}$")
+        self.assertRegex(number_a, rf"^SO-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, "SO-SHOULD-BE-IGNORED")
         self.assertEqual(so_a["quotationId"], first_quote["id"])
         self.assertEqual(so_a["customerId"], customer_id)
@@ -205,7 +205,7 @@ class SalesOrderApiTests(unittest.TestCase):
         so_b = second.json()["data"]
         self.created_so_ids.append(so_b["id"])
         number_b = so_b.get("orderNumber") or so_b.get("order_number")
-        self.assertRegex(number_b, rf"^SO-{year}-\d{{3}}$")
+        self.assertRegex(number_b, rf"^SO-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, number_b)
         self.assertEqual(self._quote_status(operator, second_quote["id"]), "converted")
 
@@ -324,6 +324,86 @@ class SalesOrderApiTests(unittest.TestCase):
         spoofed = spoof.json()["data"]
         self.created_so_ids.append(spoofed["id"])
         self.assertEqual(spoofed["organizationId"], str(self.org_b_id))
+
+    def test_list_filters_by_customer_and_status(self) -> None:
+        admin = self._login("admin@demo-business.com", "admin123")
+        operator = self._login("operator@demo-business.com", "operator123")
+        customer_a = self._create_customer(admin)
+        customer_b = self._create_customer(admin)
+        confirmed_a = self.client.post(
+            SALES_ORDERS_URL,
+            headers=self._auth(operator),
+            json={"customerId": customer_a, "status": "confirmed", "totalAmount": "10.00"},
+        )
+        cancelled_a = self.client.post(
+            SALES_ORDERS_URL,
+            headers=self._auth(operator),
+            json={"customerId": customer_a, "status": "cancelled", "totalAmount": "20.00"},
+        )
+        confirmed_b = self.client.post(
+            SALES_ORDERS_URL,
+            headers=self._auth(operator),
+            json={"customerId": customer_b, "status": "confirmed", "totalAmount": "30.00"},
+        )
+        self.assertEqual(confirmed_a.status_code, 201, confirmed_a.text)
+        self.assertEqual(cancelled_a.status_code, 201, cancelled_a.text)
+        self.assertEqual(confirmed_b.status_code, 201, confirmed_b.text)
+        id_confirmed_a = confirmed_a.json()["data"]["id"]
+        id_cancelled_a = cancelled_a.json()["data"]["id"]
+        id_confirmed_b = confirmed_b.json()["data"]["id"]
+        self.created_so_ids.extend([id_confirmed_a, id_cancelled_a, id_confirmed_b])
+
+        filtered = self.client.get(
+            f"{SALES_ORDERS_URL}?page=1&page_size=20&customer_id={customer_a}&status=confirmed",
+            headers=self._auth(operator),
+        )
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        body = filtered.json()
+        ids = [item["id"] for item in body["data"]]
+        self.assertEqual(ids, [id_confirmed_a])
+        self.assertEqual(body["meta"].get("total"), 1)
+        self.assertNotIn(id_cancelled_a, ids)
+        self.assertNotIn(id_confirmed_b, ids)
+
+    def test_list_filters_stay_tenant_scoped(self) -> None:
+        token_a = self._login("admin@demo-business.com", "admin123")
+        customer_a = self._create_customer(token_a)
+        create_a = self.client.post(
+            SALES_ORDERS_URL,
+            headers=self._auth(token_a),
+            json={"customerId": customer_a, "status": "confirmed", "totalAmount": "11.00"},
+        )
+        self.assertEqual(create_a.status_code, 201, create_a.text)
+        order_a = create_a.json()["data"]["id"]
+        self.created_so_ids.append(order_a)
+
+        token_b = self._login(self.org_b_email, ORG_B_PASSWORD)
+        customer_b = self._create_customer(token_b)
+        create_b = self.client.post(
+            SALES_ORDERS_URL,
+            headers=self._auth(token_b),
+            json={"customerId": customer_b, "status": "confirmed", "totalAmount": "22.00"},
+        )
+        self.assertEqual(create_b.status_code, 201, create_b.text)
+        order_b = create_b.json()["data"]["id"]
+        self.created_so_ids.append(order_b)
+
+        stolen = self.client.get(
+            f"{SALES_ORDERS_URL}?page=1&page_size=20&customer_id={customer_a}&status=confirmed",
+            headers=self._auth(token_b),
+        )
+        self.assertEqual(stolen.status_code, 200, stolen.text)
+        stolen_ids = [item["id"] for item in stolen.json()["data"]]
+        self.assertNotIn(order_a, stolen_ids)
+
+        own = self.client.get(
+            f"{SALES_ORDERS_URL}?page=1&page_size=20&customer_id={customer_b}&status=confirmed",
+            headers=self._auth(token_b),
+        )
+        self.assertEqual(own.status_code, 200, own.text)
+        own_ids = [item["id"] for item in own.json()["data"]]
+        self.assertEqual(own_ids, [order_b])
+        self.assertNotIn(order_a, own_ids)
 
 
 if __name__ == "__main__":

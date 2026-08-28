@@ -25,6 +25,16 @@ def _envelope(
     }
 
 
+def _json_safe(value: object) -> object:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    return str(value)
+
+
 def _validation_details(exc: RequestValidationError) -> tuple[str, dict[str, list[str]], object]:
     fields: dict[str, list[str]] = {}
     for err in exc.errors():
@@ -32,7 +42,7 @@ def _validation_details(exc: RequestValidationError) -> tuple[str, dict[str, lis
         key = str(loc[-1]) if loc else "body"
         fields.setdefault(key, []).append(err.get("msg") or "Invalid value")
     first = next((msgs[0] for msgs in fields.values() if msgs), "Validation error")
-    return first, fields, exc.errors()
+    return first, fields, _json_safe(exc.errors())
 
 
 def register_error_handlers(app: FastAPI) -> None:

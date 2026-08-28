@@ -37,7 +37,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'O2C',
     module: 'o2c',
     items: [
-      { label: 'Quotations', route: '/o2c/quotations', icon: 'quote' },
+      { label: 'Subscribed Plans', route: '/o2c/quotations', icon: 'quote' },
       { label: 'Sales Orders', route: '/o2c/sales-orders', icon: 'order' },
       { label: 'Deliveries / Services', route: '/o2c/deliveries', icon: 'delivery' },
       { label: 'Sales Invoices', route: '/o2c/sales-invoices', icon: 'invoice' },
@@ -50,14 +50,14 @@ export const NAV_SECTIONS: NavSection[] = [
     module: 'finance',
     items: [
       { label: 'Expenses', route: '/finance/expenses', icon: 'expense' },
-      { label: 'Income', route: '/finance/income', icon: 'income', comingSoon: true },
-      { label: 'Transactions', route: '/finance/transactions', icon: 'transaction', comingSoon: true },
-      { label: 'Accounts', route: '/finance/accounts', icon: 'account', comingSoon: true },
-      { label: 'GST / Tax', route: '/finance/gst', icon: 'tax', comingSoon: true },
-      { label: 'Reconciliation', route: '/finance/reconciliation', icon: 'reconcile', comingSoon: true },
-      { label: 'Bookings', route: '/finance/bookings', icon: 'booking', comingSoon: true },
-      { label: 'Booking Invoices', route: '/finance/invoices', icon: 'invoice', comingSoon: true },
-      { label: 'Receipts / Payments', route: '/finance/receipts', icon: 'receipt', comingSoon: true },
+      { label: 'Income', route: '/finance/income', icon: 'income' },
+      { label: 'Transactions', route: '/finance/transactions', icon: 'transaction' },
+      { label: 'Accounts', route: '/finance/accounts', icon: 'account' },
+      { label: 'GST / Tax', route: '/finance/gst', icon: 'tax' },
+      { label: 'Reconciliation', route: '/finance/reconciliation', icon: 'reconcile' },
+      { label: 'Bookings', route: '/finance/bookings', icon: 'booking' },
+      { label: 'Booking Invoices', route: '/finance/invoices', icon: 'invoice' },
+      { label: 'Receipts / Payments', route: '/finance/receipts', icon: 'receipt' },
     ],
   },
   {
@@ -66,25 +66,25 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Vendors', route: '/master/vendors', icon: 'vendor' },
       { label: 'Customers', route: '/master/customers', icon: 'customer' },
-      { label: 'Products', route: '/master/products', icon: 'product', comingSoon: true },
-      { label: 'Categories', route: '/master/categories', icon: 'category', comingSoon: true },
-      { label: 'Services', route: '/master/services', icon: 'service', comingSoon: true },
+      { label: 'Products', route: '/master/products', icon: 'product' },
+      { label: 'Categories', route: '/master/categories', icon: 'category' },
+      { label: 'Services', route: '/master/services', icon: 'service' },
     ],
   },
   {
     label: 'Reports',
     module: 'reports',
-    items: [{ label: 'All Reports', route: '/reports', icon: 'report', comingSoon: true }],
+    items: [{ label: 'All Reports', route: '/reports', icon: 'report' }],
   },
   {
     label: 'Administration',
     module: 'admin',
     items: [
       { label: 'Users & Roles', route: '/admin/users', icon: 'users', access: 'admin' },
-      { label: 'Reference Data', route: '/admin/reference-data', icon: 'reference', access: 'reference', comingSoon: true },
+      { label: 'Reference Data', route: '/admin/reference-data', icon: 'reference', access: 'reference' },
       { label: 'Audit Logs', route: '/admin/audit-logs', icon: 'audit' },
-      { label: 'Documents', route: '/admin/documents', icon: 'document', comingSoon: true },
-      { label: 'Settings', route: '/admin/settings', icon: 'settings', access: 'admin', comingSoon: true },
+      { label: 'Documents', route: '/admin/documents', icon: 'document' },
+      { label: 'Settings', route: '/admin/settings', icon: 'settings', access: 'admin' },
     ],
   },
 ];
@@ -102,7 +102,7 @@ export const P2P_WORKFLOW_STEPS = [
 
 export const O2C_WORKFLOW_STEPS = [
   'Customer',
-  'Quotation',
+  'Subscribed Plan',
   'Sales Order',
   'Delivery / Service',
   'Sales Invoice',

@@ -1,23 +1,26 @@
 <div class="page">
-  <app-page-header title="GST / Tax" subtitle="Input and output GST from stored GST amounts. CGST, SGST, and IGST are not split in the current records.">
+  <app-page-header title="GST / Tax" subtitle="Stored gst_amount on invoices, aggregated. No tax calculation and no CGST/SGST/IGST split.">
     <a class="btn btn--secondary" routerLink="/reports/gst">Open GST report</a>
   </app-page-header>
-  <app-finance-banner description="GST amount is stored separately on expenses and invoices and is not added to those document totals." />
-  <div class="dashboard-section grid grid--3">
-    <app-summary-card label="Input GST" [value]="gst.inputGst" tone="payable" meta="Expenses + supplier invoices" />
-    <app-summary-card label="Output GST" [value]="gst.outputGst" tone="income" meta="GST invoices + O2C sales invoices" />
-    <app-summary-card label="Net (output − input)" [value]="gst.net" tone="cash" />
-  </div>
-  <article class="card">
-    <div class="card__header"><h3 class="card__title">Breakdown</h3></div>
-    <div class="card__body">
-      <dl class="detail-list">
-        <dt>Expense GST</dt><dd>{{ gst.expenses | inr }}</dd>
-        <dt>Supplier invoice GST</dt><dd>{{ gst.supplier | inr }}</dd>
-        <dt>Existing GST invoices</dt><dd>{{ gst.outputLegacy | inr }}</dd>
-        <dt>O2C sales invoice GST</dt><dd>{{ gst.outputO2c | inr }}</dd>
-      </dl>
-      <p class="form-field__hint" style="margin-top: 1rem;">A dedicated tax-line structure is required before CGST / SGST / IGST can be shown.</p>
+  <app-finance-banner description="GST is stored separately and is not added to invoice totals. Expense GST is not stored on finance_transactions, so it is shown as zero." />
+  @if (loading()) { <app-loading-skeleton /> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
+  @else if (gst) {
+    <div class="dashboard-section grid grid--3">
+      <app-summary-card label="Input GST" [value]="gst.inputGst" tone="payable" meta="Supplier invoices" />
+      <app-summary-card label="Output GST" [value]="gst.outputGst" tone="income" meta="O2C + legacy GST invoices" />
+      <app-summary-card label="Net (output − input)" [value]="gst.net" tone="cash" />
     </div>
-  </article>
+    <article class="card">
+      <div class="card__header"><h3 class="card__title">Breakdown</h3></div>
+      <div class="card__body">
+        <dl class="detail-list">
+          <dt>Expense GST</dt><dd>{{ gst.expenses | inr }}</dd>
+          <dt>Supplier invoice GST</dt><dd>{{ gst.supplier | inr }}</dd>
+          <dt>Legacy GST invoices</dt><dd>{{ gst.outputLegacy | inr }}</dd>
+          <dt>O2C sales invoice GST</dt><dd>{{ gst.outputO2c | inr }}</dd>
+        </dl>
+      </div>
+    </article>
+  }
 </div>

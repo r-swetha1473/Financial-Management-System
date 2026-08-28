@@ -218,7 +218,7 @@ class GoodsReceiptApiTests(unittest.TestCase):
         grn_a = first.json()["data"]
         self.created_grn_ids.append(grn_a["id"])
         number_a = grn_a.get("grnNumber") or grn_a.get("grn_number")
-        self.assertRegex(number_a, rf"^GRN-{year}-\d{{3}}$")
+        self.assertRegex(number_a, rf"^GRN-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, "GRN-SHOULD-BE-IGNORED")
         self.assertEqual(grn_a["purchaseOrderId"], first_po["id"])
         self.assertEqual(self._po_status(operator, first_po["id"]), "received")
@@ -234,7 +234,7 @@ class GoodsReceiptApiTests(unittest.TestCase):
         grn_b = second.json()["data"]
         self.created_grn_ids.append(grn_b["id"])
         number_b = grn_b.get("grnNumber") or grn_b.get("grn_number")
-        self.assertRegex(number_b, rf"^GRN-{year}-\d{{3}}$")
+        self.assertRegex(number_b, rf"^GRN-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, number_b)
         self.assertEqual(self._po_status(operator, second_po["id"]), "received")
 

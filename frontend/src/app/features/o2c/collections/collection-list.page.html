@@ -3,10 +3,11 @@
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Record collection</button> }
   </app-page-header>
   <app-o2c-banner currentStep="Payment Collection" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search invoice, customer, mode..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search invoice, customer, mode..."
+    [search]="search"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No collections" message="Record a collection against an O2C sales invoice." /></div> }

@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
@@ -8,6 +8,7 @@ import { ToastService } from '../../../core/ui/toast.service';
 import { compareMoney, parseMoneyInput, subtractMoney } from '../../../core/utils/money.util';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -21,11 +22,11 @@ import { ExistingSalesBannerComponent } from '../components/existing-sales-banne
   selector: 'app-receipt-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     ReactiveFormsModule,
     RouterLink,
     PageHeaderComponent,
     ExistingSalesBannerComponent,
+    FilterBarComponent,
     PaginationComponent,
     ModalComponent,
     ConfirmDialogComponent,
@@ -95,7 +96,13 @@ export class ReceiptListPage implements OnInit {
         this.loading.set(false);
         this.error.set('Unable to load receipts.');
       },
-    });
+      });
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {
@@ -113,7 +120,8 @@ export class ReceiptListPage implements OnInit {
 
   refreshOutstanding(): void {
     const invoiceId = this.form.controls.invoiceId.value;
-    const summary = invoiceId ? this.api.legacyInvoiceOutstanding(invoiceId) : null;
+    const invoice = this.invoices.find((row) => row.id === invoiceId) ?? null;
+    const summary = this.api.legacyInvoiceOutstanding(invoice);
     this.invoiceAmount = summary?.invoiceAmount ?? '0.00';
     this.alreadyPaid = summary?.paid ?? '0.00';
     this.outstanding = summary?.outstanding ?? '0.00';

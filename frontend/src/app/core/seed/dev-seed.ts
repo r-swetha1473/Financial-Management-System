@@ -2,7 +2,6 @@ import { LoginResponse, UserSession } from '../models/auth.model';
 import { DEMO_ADMIN_USER_ID, DEMO_ORGANIZATION_ID } from './ids';
 import {
   CashPositionItem,
-  DashboardCategoryBreakdown,
   DashboardPeriod,
   DashboardSummary,
   DashboardTrendPoint,
@@ -58,14 +57,6 @@ export const DASHBOARD_SEED = {
       expenses: expenses[index],
     }));
   },
-
-  categories: [
-    { category: 'Procurement', amount: '520000.00', percentage: '32.0' },
-    { category: 'Operations', amount: '410000.00', percentage: '25.3' },
-    { category: 'Maintenance', amount: '280000.00', percentage: '17.2' },
-    { category: 'Logistics', amount: '213400.00', percentage: '13.1' },
-    { category: 'Other', amount: '200000.00', percentage: '12.4' },
-  ] satisfies DashboardCategoryBreakdown[],
 
   expenses: [
     { id: 'EXP-1042', vendor: 'Metro Supplies Ltd', category: 'Procurement', amount: '24500.00', expenseDate: '2026-08-24', status: 'approved' },

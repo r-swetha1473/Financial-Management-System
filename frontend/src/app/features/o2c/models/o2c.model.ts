@@ -21,10 +21,16 @@ export interface Customer {
   gstin: string | null;
   state: string | null;
   creditLimit: string | null;
+  phone: string | null;
+  driversLicenseNumber: string | null;
+  photoFileName: string | null;
+  photoMimeType: string | null;
+  photoDocumentId: string | null;
   createdAt: string;
   addressProofName?: string;
   addressProofSize?: string;
   addressProofType?: string;
+  addressProofDocumentId?: string | null;
 }
 
 export interface OfferingRef {
@@ -48,6 +54,9 @@ export interface Quotation {
   quoteDate: string;
   validUntil: string | null;
   totalAmount: string;
+  planDuration: number | null;
+  billingCycle: 'one_time' | 'weekly' | 'monthly' | null;
+  depositAmount: string;
   createdAt: string;
 }
 
@@ -154,6 +163,8 @@ export interface LegacyInvoice {
   invoiceAmount: string;
   isGstInvoice: boolean;
   gstAmount: string;
+  paid?: string;
+  outstanding?: string;
   status: 'pending' | 'partially_paid' | 'paid';
   createdAt: string;
 }

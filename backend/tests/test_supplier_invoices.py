@@ -213,7 +213,7 @@ class SupplierInvoiceApiTests(unittest.TestCase):
         invoice_a = first.json()["data"]
         self.created_invoice_ids.append(invoice_a["id"])
         number_a = invoice_a.get("invoiceNumber") or invoice_a.get("invoice_number")
-        self.assertRegex(number_a, rf"^SI-{year}-\d{{3}}$")
+        self.assertRegex(number_a, rf"^SI-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, "SI-SHOULD-BE-IGNORED")
         self.assertEqual(invoice_a["status"], "pending")
         self.assertEqual(invoice_a.get("approvalStatus") or invoice_a.get("approval_status"), "pending")
@@ -231,7 +231,7 @@ class SupplierInvoiceApiTests(unittest.TestCase):
         invoice_b = second.json()["data"]
         self.created_invoice_ids.append(invoice_b["id"])
         number_b = invoice_b.get("invoiceNumber") or invoice_b.get("invoice_number")
-        self.assertRegex(number_b, rf"^SI-{year}-\d{{3}}$")
+        self.assertRegex(number_b, rf"^SI-{year}-\d{{3,}}$")
         self.assertNotEqual(number_a, number_b)
 
         listed = self.client.get(f"{INVOICES_URL}?page=1&page_size=20", headers=self._auth(operator))

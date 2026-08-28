@@ -38,8 +38,17 @@ async def list_sales_orders(
     tenant_id: UUID,
     page: int,
     page_size: int,
+    customer_id: UUID | None = None,
+    status: str | None = None,
+    search: str | None = None,
 ) -> tuple[list[SalesOrderOut], int]:
-    rows, total = await SalesOrderRepository(session, tenant_id).list_page(page, page_size)
+    rows, total = await SalesOrderRepository(session, tenant_id).list_page(
+        page,
+        page_size,
+        customer_id=customer_id,
+        status=status,
+        search=search,
+    )
     return [_to_out(order, customer_name, quote_number) for order, customer_name, quote_number in rows], total
 
 
@@ -75,17 +84,17 @@ async def create_sales_order(
         if quotation is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Quotation not found in this organization.",
+                detail="Subscribed plan not found in this organization.",
             )
         if quotation.status != _ACCEPTED:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Quotation must be accepted before converting to a sales order.",
+                detail="Subscribed plan must be accepted before converting to a sales order.",
             )
         if payload.customer_id is not None and payload.customer_id != quotation.customer_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Customer does not match the quotation.",
+                detail="Customer does not match the subscribed plan.",
             )
         customer = await _customer_in_tenant(session, tenant_id, quotation.customer_id)
     else:

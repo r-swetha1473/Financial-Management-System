@@ -11,7 +11,7 @@
     <app-o2c-banner currentStep="Sales Order" />
     <app-document-trail [items]="[
       { label: 'Customer', value: record.customerName, route: '/master/customers/' + record.customerId },
-      { label: 'Quote', value: record.quoteNumber || '—', route: record.quotationId ? '/o2c/quotations/' + record.quotationId : null },
+      { label: 'Plan', value: record.quoteNumber || '—', route: record.quotationId ? '/o2c/quotations/' + record.quotationId : null },
       { label: 'Sales order', value: record.orderNumber, status: record.status },
       { label: 'Delivery', value: deliveries[0]?.deliveryNumber || 'None', route: deliveries[0] ? '/o2c/deliveries/' + deliveries[0].id : null }
     ]" />

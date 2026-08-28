@@ -1,38 +1,30 @@
 <div class="page">
-  <app-page-header title="Quotations" subtitle="Price and propose work to a customer before a sales order.">
-    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New quotation</button> }
+  <app-page-header title="Subscribed Plans" subtitle="Subscribe a customer to a rental plan before a sales order. One invoice per plan — billing cycle is stored, not auto-invoiced.">
+    @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">New subscribed plan</button> }
   </app-page-header>
-  <app-o2c-banner currentStep="Quotation" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search quote or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
-      <option value="">All customers</option>
-      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
-    </select>
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="draft">Draft</option>
-      <option value="sent">Sent</option>
-      <option value="accepted">Accepted</option>
-      <option value="rejected">Rejected</option>
-      <option value="converted">Converted</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-o2c-banner currentStep="Subscribed Plan" />
+  <app-filter-bar
+    searchPlaceholder="Search plan or customer..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
-  @else if (items.length === 0) { <div class="card"><app-empty-state title="No quotations" message="Create a quotation for a customer." /></div> }
+  @else if (items.length === 0) { <div class="card"><app-empty-state title="No subscribed plans" message="Create a subscribed plan for a customer." /></div> }
   @else {
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>Quote</th><th>Customer</th><th>Date</th><th class="col-amount">Amount</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
+        <thead><tr><th>Plan</th><th>Customer</th><th>Duration</th><th>Billing</th><th class="col-amount">Amount</th><th class="col-amount">Deposit</th><th>Status</th><th class="col-actions">Actions</th></tr></thead>
         <tbody>
           @for (row of items; track row.id) {
             <tr>
               <td class="text-mono"><a class="table-link" [routerLink]="['/o2c/quotations', row.id]">{{ row.quoteNumber }}</a></td>
               <td><a class="table-link" [routerLink]="['/master/customers', row.customerId]">{{ row.customerName }}</a></td>
-              <td>{{ row.quoteDate }}</td>
+              <td>{{ row.planDuration ? row.planDuration + ' days' : '—' }}</td>
+              <td>{{ billingLabel(row.billingCycle) }}</td>
               <td class="col-amount">{{ row.totalAmount | inr }}</td>
+              <td class="col-amount">{{ row.depositAmount | inr }}</td>
               <td><app-status-badge [status]="row.status" /></td>
               <td class="col-actions">
                 <a class="btn btn--ghost btn--sm" [routerLink]="['/o2c/quotations', row.id]">View</a>
@@ -45,9 +37,9 @@
       <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="page = $event; load()" />
     </div>
   }
-  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit quotation' : 'New quotation'" (closed)="modalOpen.set(false)">
+  <app-modal [open]="modalOpen()" [title]="editing ? 'Edit subscribed plan' : 'New subscribed plan'" (closed)="modalOpen.set(false)">
     <form class="form-grid" [formGroup]="form">
-      <div class="form-field"><label class="form-field__label">Quote number<span class="form-field__required">*</span></label><input class="form-input" formControlName="quoteNumber" /></div>
+      <div class="form-field"><label class="form-field__label">Plan number<span class="form-field__required">*</span></label><input class="form-input" formControlName="quoteNumber" /></div>
       <div class="form-field">
         <label class="form-field__label">Customer<span class="form-field__required">*</span></label>
         <select class="form-select" formControlName="customerId">
@@ -55,9 +47,19 @@
           @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
         </select>
       </div>
-      <div class="form-field"><label class="form-field__label">Quote date</label><input class="form-input" type="date" formControlName="quoteDate" /></div>
+      <div class="form-field"><label class="form-field__label">Plan date</label><input class="form-input" type="date" formControlName="quoteDate" /></div>
       <div class="form-field"><label class="form-field__label">Valid until</label><input class="form-input" type="date" formControlName="validUntil" /></div>
+      <div class="form-field"><label class="form-field__label">Plan duration (days)</label><input class="form-input" type="number" min="1" formControlName="planDuration" placeholder="e.g. 30" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Billing cycle</label>
+        <select class="form-select" formControlName="billingCycle">
+          <option value="one_time">One time</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
       <div class="form-field"><label class="form-field__label">Amount</label><input class="form-input" formControlName="totalAmount" /></div>
+      <div class="form-field"><label class="form-field__label">Deposit amount</label><input class="form-input" formControlName="depositAmount" placeholder="Security deposit — not invoiced yet" /></div>
       <div class="form-field">
         <label class="form-field__label">Status</label>
         <select class="form-select" formControlName="status">

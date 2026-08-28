@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.audit import write_audit_log
 from app.models.purchase_order import PurchaseOrder
 from app.models.vendor import Vendor
 from app.repositories.purchase_orders import PurchaseOrderRepository
@@ -14,6 +15,8 @@ from app.repositories.purchase_requests import PurchaseRequestRepository
 from app.schemas.purchase_order import PurchaseOrderCreate, PurchaseOrderOut
 
 _APPROVED = "approved"
+_DRAFT = "draft"
+_ISSUED = "issued"
 
 
 def _to_out(row: PurchaseOrder, vendor_name: str | None, request_number: str | None) -> PurchaseOrderOut:
@@ -37,8 +40,13 @@ async def list_purchase_orders(
     tenant_id: UUID,
     page: int,
     page_size: int,
+    vendor_id: UUID | None = None,
+    status: str | None = None,
+    search: str | None = None,
 ) -> tuple[list[PurchaseOrderOut], int]:
-    rows, total = await PurchaseOrderRepository(session, tenant_id).list_page(page, page_size)
+    rows, total = await PurchaseOrderRepository(session, tenant_id).list_page(
+        page, page_size, vendor_id=vendor_id, status=status, search=search
+    )
     return [_to_out(order, vendor_name, request_number) for order, vendor_name, request_number in rows], total
 
 
@@ -98,3 +106,44 @@ async def create_purchase_order(
         status=payload.status,
     )
     return _to_out(order, vendor.name, source.request_number if source is not None else None)
+
+
+async def issue_purchase_order(
+    session: AsyncSession,
+    tenant_id: UUID,
+    actor_id: UUID,
+    order_id: UUID,
+) -> PurchaseOrderOut:
+    repo = PurchaseOrderRepository(session, tenant_id)
+    order = await repo.get_for_update(order_id)
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Purchase order not found in this organization.",
+        )
+    if order.status != _DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only a draft purchase order can be issued (current status is {order.status}).",
+        )
+
+    previous = order.status
+    order.status = _ISSUED
+    write_audit_log(
+        session,
+        organization_id=tenant_id,
+        user_id=actor_id,
+        action="issue",
+        entity_name="purchase_order",
+        entity_id=order.id,
+        old_values={"status": previous},
+        new_values={"status": _ISSUED, "po_number": order.po_number},
+    )
+    await session.commit()
+    await session.refresh(order)
+
+    named = await repo.get_by_id(order.id)
+    if named is None:
+        return _to_out(order, None, None)
+    row, vendor_name, request_number = named
+    return _to_out(row, vendor_name, request_number)

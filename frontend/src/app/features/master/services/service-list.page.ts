@@ -1,11 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { parseMoneyInput } from '../../../core/utils/money.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -19,9 +20,9 @@ import { FinanceApiService } from '../../finance/services/finance-api.service';
   selector: 'app-service-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     ReactiveFormsModule,
     PageHeaderComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -64,7 +65,13 @@ export class ServiceListPage implements OnInit {
     this.loading.set(true);
     this.api.listOfferings({ page: this.page, search: this.search }).subscribe({
       next: (result) => {
-        this.items = result.items;
+        const query = this.search.trim().toLowerCase();
+        this.items = query
+          ? result.items.filter(
+              (row) =>
+                row.name.toLowerCase().includes(query) || (row.productName ?? '').toLowerCase().includes(query),
+            )
+          : result.items;
         this.total = result.total;
         this.loading.set(false);
       },
@@ -72,7 +79,13 @@ export class ServiceListPage implements OnInit {
         this.loading.set(false);
         this.error.set('Unable to load services.');
       },
-    });
+      });
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {
@@ -81,16 +94,8 @@ export class ServiceListPage implements OnInit {
     this.modalOpen.set(true);
   }
 
-  openEdit(row: Offering): void {
-    this.editing = row;
-    this.form.patchValue({
-      name: row.name,
-      productId: row.productId ?? '',
-      description: row.description,
-      amount: row.amount,
-      isActive: row.isActive,
-    });
-    this.modalOpen.set(true);
+  openEdit(_row: Offering): void {
+    this.toast.error('Updating a service offering is not supported by the API yet.');
   }
 
   save(): void {

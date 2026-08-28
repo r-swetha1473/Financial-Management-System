@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
@@ -7,6 +7,7 @@ import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { parseMoneyInput } from '../../../core/utils/money.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -21,11 +22,11 @@ import { O2cApiService } from '../services/o2c-api.service';
   selector: 'app-sales-order-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     ReactiveFormsModule,
     RouterLink,
     PageHeaderComponent,
     O2cBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -97,7 +98,7 @@ export class SalesOrderListPage implements OnInit {
   load(): void {
     this.loading.set(true);
     this.api
-      .listSalesOrders({ page: this.page, pageSize: this.pageSize })
+      .listSalesOrders({ page: this.page, pageSize: this.pageSize, customerId: this.customerId, status: this.status, search: this.search })
       .subscribe({
         next: (result) => {
           this.items = result.items;
@@ -109,6 +110,37 @@ export class SalesOrderListPage implements OnInit {
           this.error.set('Unable to load sales orders.');
         },
       });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'customer',
+        label: 'Customer',
+        blankLabel: 'All customers',
+        value: this.customerId,
+        options: this.customers.map((customer) => ({ value: customer.id, label: customer.name })),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All statuses',
+        value: this.status,
+        options: [
+          { value: 'confirmed', label: 'Confirmed' },
+          { value: 'fulfilled', label: 'Fulfilled' },
+          { value: 'cancelled', label: 'Cancelled' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.customerId = state.values['customer'] ?? '';
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

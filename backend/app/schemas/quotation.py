@@ -1,21 +1,33 @@
-"""Quotation schemas. quote_number and organization_id are server-assigned."""
+"""Quotation schemas. quote_number and organization_id are server-assigned.
+
+User-facing name is Subscribed Plan. JSON field names (quoteNumber, etc.) stay
+for contract compatibility. plan_duration is days.
+"""
 
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Literal
 from uuid import UUID
 
-from pydantic import field_serializer, field_validator
+from pydantic import Field, field_serializer, field_validator
 
 from app.schemas.common import CamelModel
 
 QuotationStatus = Literal["draft", "sent", "accepted", "rejected", "converted"]
+BillingCycle = Literal["one_time", "weekly", "monthly"]
 
 
 def _parse_money(value: object) -> Decimal:
     if value is None or value == "":
         return Decimal("0")
-    return Decimal(str(value))
+    text = str(value).strip().replace(",", "")
+    try:
+        amount = Decimal(text)
+    except InvalidOperation as exc:
+        raise ValueError("Amount must be a non-negative number.") from exc
+    if amount < 0:
+        raise ValueError("Amount must be a non-negative number.")
+    return amount
 
 
 class QuotationCreate(CamelModel):
@@ -24,6 +36,9 @@ class QuotationCreate(CamelModel):
     valid_until: date | None = None
     total_amount: Decimal = Decimal("0")
     status: QuotationStatus = "draft"
+    plan_duration: int | None = Field(default=None, ge=1)
+    billing_cycle: BillingCycle | None = None
+    deposit_amount: Decimal = Decimal("0")
 
     @field_validator("customer_id", mode="before")
     @classmethod
@@ -32,16 +47,23 @@ class QuotationCreate(CamelModel):
             return None
         return value
 
-    @field_validator("valid_until", mode="before")
+    @field_validator("valid_until", "billing_cycle", mode="before")
     @classmethod
-    def empty_valid_until_to_none(cls, value: object) -> object:
+    def empty_optional_to_none(cls, value: object) -> object:
         if value == "":
             return None
         return value
 
-    @field_validator("total_amount", mode="before")
+    @field_validator("plan_duration", mode="before")
     @classmethod
-    def parse_total_amount(cls, value: object) -> Decimal:
+    def empty_duration_to_none(cls, value: object) -> object:
+        if value is None or value == "":
+            return None
+        return value
+
+    @field_validator("total_amount", "deposit_amount", mode="before")
+    @classmethod
+    def parse_money_fields(cls, value: object) -> Decimal:
         return _parse_money(value)
 
 
@@ -55,8 +77,11 @@ class QuotationOut(CamelModel):
     quote_date: date
     valid_until: date | None = None
     total_amount: Decimal
+    plan_duration: int | None = None
+    billing_cycle: str | None = None
+    deposit_amount: Decimal = Decimal("0")
     created_at: datetime
 
-    @field_serializer("total_amount")
-    def serialize_total_amount(self, value: Decimal) -> str:
+    @field_serializer("total_amount", "deposit_amount")
+    def serialize_money(self, value: Decimal) -> str:
         return format(value.quantize(Decimal("0.0001")), "f")

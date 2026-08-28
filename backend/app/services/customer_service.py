@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer import Customer
 from app.repositories.customers import CustomerRepository
-from app.schemas.customer import CustomerCreate, CustomerOut
+from app.schemas.customer import CustomerCreate, CustomerOut, format_file_size
 
 
 def _to_out(customer: Customer) -> CustomerOut:
@@ -19,6 +19,17 @@ def _to_out(customer: Customer) -> CustomerOut:
         gstin=customer.gst_number,
         state=customer.state,
         credit_limit=customer.credit_limit,
+        phone=customer.phone,
+        drivers_license_number=customer.drivers_license_number,
+        photo_file_name=customer.photo_file_name,
+        photo_mime_type=customer.photo_mime_type,
+        photo_document_id=str(customer.photo_document_id) if customer.photo_document_id else None,
+        address_proof_name=customer.address_proof_file_name,
+        address_proof_size=format_file_size(customer.address_proof_file_size),
+        address_proof_type=customer.address_proof_mime_type,
+        address_proof_document_id=(
+            str(customer.address_proof_document_id) if customer.address_proof_document_id else None
+        ),
         created_at=customer.created_at,
     )
 
@@ -50,5 +61,7 @@ async def create_customer(session: AsyncSession, tenant_id: UUID, payload: Custo
         gst_number=payload.gstin,
         state=payload.state,
         credit_limit=payload.credit_limit,
+        phone=payload.phone,
+        drivers_license_number=payload.drivers_license_number,
     )
     return _to_out(customer)

@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 
 from app.db.repository import TenantScopedRepository
 from app.db.tenant import for_tenant
@@ -35,14 +35,30 @@ class PaymentRepository(TenantScopedRepository):
             )
         )
 
+    def _list_filters(self, search: str | None):
+        clauses = [self._tenant_filter()]
+        term = (search or "").strip()
+        if term:
+            like = f"%{term}%"
+            clauses.append(
+                or_(
+                    SupplierInvoice.invoice_number.ilike(like),
+                    Vendor.name.ilike(like),
+                    Payment.payment_mode.ilike(like),
+                )
+            )
+        return and_(*clauses)
+
     async def list_page(
-        self, page: int, page_size: int
+        self, page: int, page_size: int, search: str | None = None
     ) -> tuple[list[tuple[Payment, str | None, UUID | None, str | None]], int]:
-        tenant = self._tenant_filter()
-        total = await self.session.scalar(select(func.count()).select_from(Payment).where(tenant)) or 0
+        where = self._list_filters(search)
+        total = await self.session.scalar(
+            select(func.count()).select_from(self._with_names().where(where).subquery())
+        ) or 0
         stmt = (
             self._with_names()
-            .where(tenant)
+            .where(where)
             .order_by(Payment.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)

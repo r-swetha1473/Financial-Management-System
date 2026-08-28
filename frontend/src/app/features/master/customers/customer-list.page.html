@@ -3,17 +3,18 @@
     @if (canEdit()) { <button class="btn btn--primary" type="button" (click)="openCreate()">Add customer</button> }
   </app-page-header>
   <app-o2c-banner currentStep="Customer" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search name or address..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search name or address..."
+    [search]="search"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No customers" message="Add a customer to start order-to-cash." /></div> }
   @else {
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>Customer</th><th>GSTIN</th><th>State</th><th>Credit limit</th><th>Created</th><th class="col-actions">Actions</th></tr></thead>
+        <thead><tr><th>Customer</th><th>Phone</th><th>GSTIN</th><th>State</th><th>Credit limit</th><th>Created</th><th class="col-actions">Actions</th></tr></thead>
         <tbody>
           @for (row of items; track row.id) {
             <tr>
@@ -21,6 +22,7 @@
                 <a class="table-link" [routerLink]="['/master/customers', row.id]">{{ row.name }}</a>
                 <div class="text-muted">{{ row.address }}</div>
               </td>
+              <td>{{ row.phone || '—' }}</td>
               <td class="text-mono">{{ row.gstin || '—' }}</td>
               <td>{{ row.state || '—' }}</td>
               <td>{{ row.creditLimit || '—' }}</td>
@@ -40,13 +42,30 @@
     <form class="form-grid" [formGroup]="form">
       <div class="form-field form-field--full"><label class="form-field__label">Customer name<span class="form-field__required">*</span></label><input class="form-input" formControlName="name" placeholder="Legal customer name" /></div>
       <div class="form-field form-field--full"><label class="form-field__label">Address</label><textarea class="form-textarea" rows="2" formControlName="address"></textarea></div>
-      <div class="form-field"><label class="form-field__label">GSTIN</label><input class="form-input" formControlName="gstin" placeholder="GSTIN" /></div>
+      <div class="form-field"><label class="form-field__label">Phone number</label><input class="form-input" formControlName="phone" placeholder="Optional" /></div>
+      <div class="form-field"><label class="form-field__label">Driver's license number</label><input class="form-input" formControlName="driversLicenseNumber" placeholder="Optional" /></div>
       <div class="form-field"><label class="form-field__label">State</label><input class="form-input" formControlName="state" /></div>
-      <div class="form-field"><label class="form-field__label">Credit limit</label><input class="form-input" formControlName="creditLimit" placeholder="Optional" /></div>
+      <div class="form-field">
+        <label class="form-field__label">Credit limit</label>
+        <input class="form-input" formControlName="creditLimit" inputmode="decimal" placeholder="Optional" [class.is-error]="!!creditLimitError" />
+        @if (creditLimitError) { <span class="form-field__error">{{ creditLimitError }}</span> }
+      </div>
+      <p class="form-field__hint form-field--full">GSTIN is not collected for rental subscribers. The field stays on the customer record for vendors and GST reporting.</p>
+      <div class="form-field">
+        <label class="form-field__label">Photo</label>
+        <input class="form-input" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" (change)="onPhotoSelected($event)" />
+        <span class="text-muted">{{ photoFile?.name || (editing?.photoFileName ? 'Current: ' + editing?.photoFileName : 'Optional PNG or JPEG, 10 MB max') }}</span>
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-field__label">Address proof</label>
+        <input class="form-input" type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" (change)="onAddressProofSelected($event)" />
+        <span class="text-muted">{{ addressProofFile?.name || (editing?.addressProofName ? 'Current: ' + editing?.addressProofName : 'Optional PNG, JPEG, or PDF, 10 MB max') }}</span>
+      </div>
+      @if (fileError) { <p class="form-field__error form-field--full">{{ fileError }}</p> }
     </form>
     <div modal-footer>
       <button class="btn btn--secondary" type="button" (click)="modalOpen.set(false)">Cancel</button>
-      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save</button>
+      <button class="btn btn--primary" type="button" [disabled]="saving() || !!fileError" (click)="save()">Save</button>
     </div>
   </app-modal>
 </div>

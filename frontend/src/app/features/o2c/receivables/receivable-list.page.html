@@ -1,20 +1,12 @@
 <div class="page">
   <app-page-header title="Receivables" subtitle="Outstanding customer balances created with each O2C sales invoice. Not a free-form ledger." />
   <app-o2c-banner currentStep="Receivables" />
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search invoice or customer..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="customerId" (change)="page = 1; load()">
-      <option value="">All customers</option>
-      @for (customer of customers; track customer.id) { <option [value]="customer.id">{{ customer.name }}</option> }
-    </select>
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="open">Open</option>
-      <option value="partial">Partial</option>
-      <option value="closed">Closed</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search invoice or customer..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
   @if (loading()) { <app-loading-skeleton /> }
   @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else if (items.length === 0) { <div class="card"><app-empty-state title="No receivables" message="Receivables appear when an O2C sales invoice is recorded." /></div> }

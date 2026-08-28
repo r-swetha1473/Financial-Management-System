@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
@@ -8,6 +8,7 @@ import { ToastService } from '../../../core/ui/toast.service';
 import { compareMoney, parseMoneyInput, subtractMoney } from '../../../core/utils/money.util';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -22,11 +23,11 @@ import { O2cApiService } from '../services/o2c-api.service';
   selector: 'app-collection-list-page',
   standalone: true,
   imports: [
-    FormsModule,
     ReactiveFormsModule,
     RouterLink,
     PageHeaderComponent,
     O2cBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -93,7 +94,13 @@ export class CollectionListPage implements OnInit {
         this.loading.set(false);
         this.error.set('Unable to load collections.');
       },
-    });
+      });
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

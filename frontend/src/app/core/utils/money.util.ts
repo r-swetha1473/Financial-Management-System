@@ -22,6 +22,15 @@ export function parseMoneyInput(value: string): string {
   return `${whole}.${`${fraction}00`.slice(0, 2)}`;
 }
 
+/** True when empty (optional) or a non-negative decimal. Rejects letters; does not strip them. */
+export function isValidOptionalMoney(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return true;
+  }
+  return /^\d+(\.\d{1,4})?$/.test(trimmed.replace(/,/g, ''));
+}
+
 function toMinor(val: string): number {
   const normalized = String(val).replace(/,/g, '');
   const negative = normalized.startsWith('-');

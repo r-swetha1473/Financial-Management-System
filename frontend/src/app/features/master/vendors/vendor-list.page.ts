@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { canMaintainReference } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -24,6 +25,7 @@ import { P2pApiService } from '../../p2p/services/p2p-api.service';
     RouterLink,
     PageHeaderComponent,
     P2pBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -71,7 +73,7 @@ export class VendorListPage implements OnInit {
   load(): void {
     this.loading.set(true);
     this.error.set('');
-    this.api.listVendors({ page: this.page, pageSize: this.pageSize }).subscribe({
+    this.api.listVendors({ page: this.page, pageSize: this.pageSize, search: this.search, status: this.status }).subscribe({
       next: (result) => {
         this.items = result.items;
         this.total = result.total;
@@ -82,6 +84,28 @@ export class VendorListPage implements OnInit {
         this.error.set('Unable to load vendors.');
       },
     });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'status',
+        label: 'Status',
+        blankLabel: 'All Statuses',
+        value: this.status,
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.status = state.values['status'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

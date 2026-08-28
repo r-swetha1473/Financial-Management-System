@@ -7,15 +7,12 @@
 
   <app-p2p-banner currentStep="Supplier/Vendor" />
 
-  <div class="toolbar">
-    <input class="form-input toolbar__search" placeholder="Search name, email, GST..." [(ngModel)]="search" (keyup.enter)="page = 1; load()" />
-    <select class="form-select" [(ngModel)]="status" (change)="page = 1; load()">
-      <option value="">All statuses</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-    </select>
-    <button class="btn btn--secondary" type="button" (click)="page = 1; load()">Apply</button>
-  </div>
+  <app-filter-bar
+    searchPlaceholder="Search vendors..."
+    [search]="search"
+    [selects]="filterSelects"
+    (changed)="onFilters($event)"
+  />
 
   @if (loading()) {
     <app-loading-skeleton />

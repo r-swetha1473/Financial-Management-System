@@ -1,37 +1,23 @@
 <div class="page">
-  <app-page-header title="Reconciliation" subtitle="Match book transactions for an account. Bank statement import is not in the current records." />
-  <app-finance-banner description="Mark posted transactions as reconciled. This does not import a bank file." />
-  <div class="toolbar">
-    <select class="form-select" [(ngModel)]="accountId" (change)="load()">
-      @for (account of accounts; track account.id) { <option [value]="account.id">{{ account.name }}</option> }
-    </select>
-  </div>
-  @if (selected()) {
-    <p class="form-field__hint">Book balance {{ selected()!.balance | inr }} · Unmatched movement {{ unmatchedTotal() | inr }}</p>
-  }
+  <app-page-header title="Reconciliation" subtitle="Not connected to a bank feed. Manual notes only — no matching, import, or statement logic." />
+  <app-finance-banner description="A bank connection is not in this product yet. Use the note field for working comments. This does not change any balances." />
   @if (loading()) { <app-loading-skeleton /> }
-  @else if (items.length === 0) { <div class="card"><app-empty-state title="No transactions" message="Post transactions against this account to reconcile them." /></div> }
+  @else if (error()) { <div class="error-state"><h3>{{ error() }}</h3></div> }
   @else {
-    <div class="data-table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Date</th><th>Type</th><th class="col-amount">Amount</th><th>Description</th><th>Status</th><th class="col-actions">Match</th></tr></thead>
-        <tbody>
-          @for (row of items; track row.id) {
-            <tr>
-              <td>{{ row.transactionDate }}</td>
-              <td><app-status-badge [status]="row.transactionType" /></td>
-              <td class="col-amount">{{ row.amount | inr }}</td>
-              <td>{{ row.description || '—' }}</td>
-              <td>{{ row.reconciled ? 'Reconciled' : 'Unmatched' }}</td>
-              <td class="col-actions">
-                @if (canEdit()) {
-                  <button class="btn btn--ghost btn--sm" type="button" (click)="toggle(row)">{{ row.reconciled ? 'Unmatch' : 'Match' }}</button>
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="card">
+      <app-empty-state title="No bank feed connected" message="Statement import and match-to-book are not built. Nothing here posts or unposts transactions." />
     </div>
+    <article class="card" style="margin-top: 1rem;">
+      <div class="card__header"><h3 class="card__title">Working notes</h3></div>
+      <div class="card__body">
+        <textarea class="form-input" rows="8" [(ngModel)]="note" [readOnly]="!canEdit()" placeholder="Optional notes for this organization."></textarea>
+        @if (updatedAt) { <p class="form-field__hint" style="margin-top: 0.5rem;">Last saved {{ updatedAt }}</p> }
+        @if (canEdit()) {
+          <div style="margin-top: 1rem;">
+            <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="save()">Save note</button>
+          </div>
+        }
+      </div>
+    </article>
   }
 </div>

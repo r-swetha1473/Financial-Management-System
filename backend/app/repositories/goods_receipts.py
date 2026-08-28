@@ -3,7 +3,7 @@
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 
 from app.db.repository import TenantScopedRepository
 from app.db.sequences import floor_year_sequence, increment_sequence
@@ -19,25 +19,47 @@ class GoodsReceiptRepository(TenantScopedRepository):
     def _tenant_filter(self):
         return for_tenant(GoodsReceipt.organization_id, self.tenant_id)
 
+    def _po_join(self):
+        return and_(
+            PurchaseOrder.id == GoodsReceipt.purchase_order_id,
+            PurchaseOrder.organization_id == self.tenant_id,
+        )
+
+    def _vendor_join(self):
+        return and_(Vendor.id == PurchaseOrder.vendor_id, Vendor.organization_id == self.tenant_id)
+
+    def _list_filters(self, status: str | None, search: str | None):
+        clauses = [self._tenant_filter()]
+        if status:
+            clauses.append(GoodsReceipt.status == status)
+        term = (search or "").strip()
+        if term:
+            like = f"%{term}%"
+            clauses.append(
+                or_(
+                    GoodsReceipt.grn_number.ilike(like),
+                    PurchaseOrder.po_number.ilike(like),
+                    Vendor.name.ilike(like),
+                )
+            )
+        return and_(*clauses)
+
     async def list_page(
-        self, page: int, page_size: int
+        self, page: int, page_size: int, status: str | None = None, search: str | None = None
     ) -> tuple[list[tuple[GoodsReceipt, str | None, UUID | None, str | None]], int]:
-        tenant = self._tenant_filter()
-        total = await self.session.scalar(select(func.count()).select_from(GoodsReceipt).where(tenant)) or 0
+        where = self._list_filters(status, search)
+        total = await self.session.scalar(
+            select(func.count())
+            .select_from(GoodsReceipt)
+            .outerjoin(PurchaseOrder, self._po_join())
+            .outerjoin(Vendor, self._vendor_join())
+            .where(where)
+        ) or 0
         stmt = (
             select(GoodsReceipt, PurchaseOrder.po_number, PurchaseOrder.vendor_id, Vendor.name)
-            .outerjoin(
-                PurchaseOrder,
-                and_(
-                    PurchaseOrder.id == GoodsReceipt.purchase_order_id,
-                    PurchaseOrder.organization_id == self.tenant_id,
-                ),
-            )
-            .outerjoin(
-                Vendor,
-                and_(Vendor.id == PurchaseOrder.vendor_id, Vendor.organization_id == self.tenant_id),
-            )
-            .where(tenant)
+            .outerjoin(PurchaseOrder, self._po_join())
+            .outerjoin(Vendor, self._vendor_join())
+            .where(where)
             .order_by(GoodsReceipt.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)

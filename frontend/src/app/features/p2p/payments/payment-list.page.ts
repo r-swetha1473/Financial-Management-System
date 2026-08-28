@@ -9,6 +9,7 @@ import { ToastService } from '../../../core/ui/toast.service';
 import { compareMoney, parseMoneyInput, subtractMoney } from '../../../core/utils/money.util';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -28,6 +29,7 @@ import { P2pApiService } from '../services/p2p-api.service';
     RouterLink,
     PageHeaderComponent,
     P2pBannerComponent,
+    FilterBarComponent,
     StatusBadgeComponent,
     PaginationComponent,
     ModalComponent,
@@ -104,9 +106,15 @@ export class PaymentListPage implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.error.set('Unable to load payments.');
-      },
-    });
+          this.error.set('Unable to load payments.');
+        },
+      });
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.page = 1;
+    this.load();
   }
 
   openCreate(): void {

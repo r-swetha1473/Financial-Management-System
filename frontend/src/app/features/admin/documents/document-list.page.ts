@@ -1,10 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 
+import { DocumentsApiService } from '../../../core/api/documents-api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { hasPermission } from '../../../core/rbac/permissions';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
@@ -14,11 +15,12 @@ import { FinanceApiService } from '../../finance/services/finance-api.service';
 @Component({
   selector: 'app-document-list-page',
   standalone: true,
-  imports: [FormsModule, PageHeaderComponent, PaginationComponent, EmptyStateComponent, LoadingSkeletonComponent],
+  imports: [PageHeaderComponent, FilterBarComponent, PaginationComponent, EmptyStateComponent, LoadingSkeletonComponent],
   templateUrl: './document-list.page.html',
 })
 export class DocumentListPage implements OnInit {
   private readonly api = inject(FinanceApiService);
+  private readonly documents = inject(DocumentsApiService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly canEdit = computed(() => hasPermission(this.auth.session()?.role, 'create'));
@@ -45,29 +47,43 @@ export class DocumentListPage implements OnInit {
         this.loading.set(false);
         this.error.set('Unable to load documents.');
       },
-    });
+      });
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.search = state.search;
+    this.page = 1;
+    this.load();
   }
 
   onFile(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file || !this.canEdit()) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const orgId = this.auth.session()?.organizationId;
+    if (!file || !this.canEdit() || !orgId) {
       return;
     }
-    this.api
-      .saveDocument({
-        entityName: 'workspace',
-        entityId: 'workspace',
-        fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        fileSize: `${Math.max(1, Math.round(file.size / 1024))} KB`,
-        storageKey: `${this.auth.session()?.organizationId ?? 'org'}/workspace/${file.name}`,
-      })
-      .subscribe({
-        next: () => {
-          this.toast.success('Document metadata saved');
-          this.load();
-        },
-        error: (err) => this.toast.error('Save failed', err.message),
-      });
+    this.documents.upload(file, 'organization', orgId).subscribe({
+      next: () => {
+        this.toast.success('Document uploaded');
+        input.value = '';
+        this.load();
+      },
+      error: (err) => this.toast.error('Upload failed', err.message),
+    });
+  }
+
+  download(row: DocumentMeta): void {
+    this.documents.getContent(row.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = row.fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => this.toast.error('Download failed', err.message),
+    });
   }
 }

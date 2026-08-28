@@ -21,6 +21,6 @@ import { O2C_WORKFLOW_STEPS } from '../../../core/navigation/nav.config';
 })
 export class O2cBannerComponent {
   @Input() currentStep = '';
-  @Input() description = 'Customer → Quotation → Sales order → Delivery/Service → Sales invoice → Collection → Receivables';
+  @Input() description = 'Customer → Subscribed plan → Sales order → Delivery/Service → Sales invoice → Collection → Receivables';
   readonly steps = O2C_WORKFLOW_STEPS;
 }

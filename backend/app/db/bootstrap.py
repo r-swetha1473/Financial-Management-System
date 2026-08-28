@@ -100,6 +100,10 @@ async def bootstrap() -> None:
     await _run_sql_file("007_sales_invoice_approval.sql")
     await _run_sql_file("008_users_username_unique.sql")
     await _run_sql_file("009_audit_logs_append_only.sql")
+    await _run_sql_file("010_customer_contact_kyc.sql")
+    await _run_sql_file("011_subscribed_plan_fields.sql")
+    await _run_sql_file("012_customer_document_refs.sql")
+    await _run_sql_file("013_reconciliation_notes.sql")
     async with SessionLocal() as session:
         await _seed_demo_auth(session)
         await session.commit()

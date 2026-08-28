@@ -4,7 +4,10 @@
   } @else {
     <app-page-header [title]="record.poNumber" subtitle="Supplier commitment document.">
       <a class="btn btn--secondary" routerLink="/p2p/purchase-orders">All purchase orders</a>
-      @if (canEdit() && record.status !== 'cancelled') {
+      @if (canEdit() && record.status === 'draft') {
+        <button class="btn btn--primary" type="button" [disabled]="issuing()" (click)="issue()">Issue purchase order</button>
+      }
+      @if (canEdit() && record.status === 'issued') {
         <a class="btn btn--primary" routerLink="/p2p/receipts" [queryParams]="{ create: '1', purchaseOrderId: record.id }">Record receipt</a>
       }
     </app-page-header>

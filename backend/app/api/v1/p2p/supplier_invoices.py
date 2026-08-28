@@ -1,7 +1,7 @@
 """P2P supplier-invoice endpoints. Tenant is always the JWT organization."""
 
 from math import ceil
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -22,9 +22,18 @@ async def list_supplier_invoices(
     session: Annotated[AsyncSession, Depends(get_db)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    vendor_id: Annotated[UUID | None, Query()] = None,
+    status: Annotated[Literal["pending", "partially_paid", "paid", "cancelled"] | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResponse[SupplierInvoiceOut]:
     items, total = await supplier_invoice_service.list_supplier_invoices(
-        session, current.tenant_id, page, page_size
+        session,
+        current.tenant_id,
+        page,
+        page_size,
+        vendor_id=vendor_id,
+        status=status,
+        search=search,
     )
     total_pages = ceil(total / page_size) if total else 0
     return PaginatedResponse(

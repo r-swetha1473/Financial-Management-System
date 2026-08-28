@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterBarComponent, FilterBarSelect, FilterBarState } from '../../../shared/components/filter-bar/filter-bar.component';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
@@ -12,7 +13,14 @@ import { AdminApiService } from '../services/admin-api.service';
 @Component({
   selector: 'app-audit-log-page',
   standalone: true,
-  imports: [FormsModule, PageHeaderComponent, PaginationComponent, EmptyStateComponent, LoadingSkeletonComponent],
+  imports: [
+    FormsModule,
+    PageHeaderComponent,
+    FilterBarComponent,
+    PaginationComponent,
+    EmptyStateComponent,
+    LoadingSkeletonComponent,
+  ],
   templateUrl: './audit-log.page.html',
 })
 export class AuditLogPage implements OnInit {
@@ -54,6 +62,30 @@ export class AuditLogPage implements OnInit {
           this.toast.error('Audit logs unavailable');
         },
       });
+  }
+
+  get filterSelects(): FilterBarSelect[] {
+    return [
+      {
+        key: 'action',
+        label: 'Action',
+        blankLabel: 'All actions',
+        value: this.action,
+        options: [
+          { value: 'create', label: 'create' },
+          { value: 'update', label: 'update' },
+          { value: 'approve', label: 'approve' },
+          { value: 'reject', label: 'reject' },
+        ],
+      },
+    ];
+  }
+
+  onFilters(state: FilterBarState): void {
+    this.entityName = state.search;
+    this.action = state.values['action'] ?? '';
+    this.page = 1;
+    this.load();
   }
 
   formatWhen(value: string): string {
